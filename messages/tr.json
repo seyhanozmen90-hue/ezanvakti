@@ -1,0 +1,99 @@
+{
+  "site": {
+    "title": "Ezan Vakitleri",
+    "subtitle": "Türkiye Namaz Vakitleri 2026",
+    "description": "Türkiye'nin tüm illeri ve ilçeleri için güncel ezan vakitleri, namaz saatleri ve aylık vakit cetveli. Diyanet onaylı, güncel ve doğru namaz vakitleri.",
+    "copyright": "Tüm hakları saklıdır."
+  },
+  "nav": {
+    "home": "Ana Sayfa",
+    "selectLocation": "İl/İlçe Seçin",
+    "themeToggle": "Tema değiştir"
+  },
+  "prayer": {
+    "times": "Namaz Vakitleri",
+    "nextPrayer": "Bir Sonraki Vakit",
+    "todaysPrayers": "Bugünün Namaz Vakitleri",
+    "monthlyTimes": "Aylık Namaz Vakitleri",
+    "remainingTime": "{prayer} vaktine kalan süre",
+    "prayerEntered": "Vakit girdi"
+  },
+  "prayers": {
+    "imsak": "İmsak",
+    "gunes": "Güneş",
+    "ogle": "Öğle",
+    "ikindi": "İkindi",
+    "aksam": "Akşam",
+    "yatsi": "Yatsı"
+  },
+  "prayerNames": {
+    "imsak": "İmsak",
+    "gunes": "Güneş",
+    "ogle": "Öğle",
+    "ikindi": "İkindi",
+    "aksam": "Akşam",
+    "yatsi": "Yatsı"
+  },
+  "location": {
+    "select": "Konum Seç",
+    "selectCity": "Şehir seç",
+    "selectDistrict": "İlçe seç",
+    "search": "İl ara...",
+    "searchDistrict": "İlçe ara...",
+    "center": "Merkez",
+    "back": "Geri"
+  },
+  "time": {
+    "hours": "Saat",
+    "minutes": "Dakika",
+    "seconds": "Saniye",
+    "hour": "saat",
+    "minute": "dakika",
+    "second": "saniye",
+    "almostThere": "Az kaldı",
+    "passed": "Geçti",
+    "approaching": "Yaklaşıyor",
+    "remainingTime": "Kalan Süre",
+    "loading": "Yükleniyor..."
+  },
+  "calendar": {
+    "monthly": "Aylık Namaz Vakitleri",
+    "date": "Tarih"
+  },
+  "table": {
+    "date": "Tarih",
+    "today": "Bugün"
+  },
+  "status": {
+    "passed": "Geçti",
+    "approaching": "Yaklaşıyor",
+    "loading": "Namaz vakitleri yükleniyor...",
+    "error": "Namaz vakitleri yüklenemedi",
+    "errorDescription": "Lütfen daha sonra tekrar deneyin.",
+    "retry": "Tekrar Dene"
+  },
+  "footer": {
+    "dataSource": "Namaz vakitleri",
+    "dataProvider": "Diyanet İşleri Başkanlığı",
+    "dataProviderLink": "verilerine göre gösterilmektedir."
+  },
+  "errors": {
+    "404": {
+      "title": "Sayfa Bulunamadı",
+      "description": "Aradığınız il veya ilçe bulunamadı.",
+      "backHome": "Ana Sayfaya Dön"
+    },
+    "general": {
+      "title": "Hata",
+      "description": "Bir şeyler yanlış gitti",
+      "descriptionDetailed": "Namaz vakitleri yüklenirken bir hata oluştu."
+    }
+  },
+  "seo": {
+    "cityTitle": "{city} Ezan Vakitleri | Namaz Saatleri 2026",
+    "districtTitle": "{city} {district} Ezan Vakitleri | Namaz Saatleri 2026",
+    "cityDescription": "{city} için güncel ezan vakitleri. İmsak: {imsak}, Öğle: {ogle}, İkindi: {ikindi}, Akşam: {aksam}, Yatsı: {yatsi}",
+    "districtDescription": "{city} {district} için güncel ezan vakitleri. İmsak: {imsak}, Öğle: {ogle}, İkindi: {ikindi}, Akşam: {aksam}, Yatsı: {yatsi}",
+    "defaultDescription": "{location} için güncel ezan vakitleri ve namaz saatleri."
+  }
+}
