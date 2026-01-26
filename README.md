@@ -2,6 +2,12 @@
 
 Türkiye'nin tüm illeri ve ilçeleri için güncel ezan vakitleri sitesi. Next.js 14 App Router ile geliştirilmiştir.
 
+## 🌐 Canlı Demo
+
+**Production:** https://ezanvakti.vercel.app
+
+📱 Mobil cihazlarda pusula özelliği tam işlevseldir!
+
 ## ✨ Özellikler
 
 - 🌍 **81 İl + İlçeler**: Türkiye'nin tüm illeri ve ilçeleri için namaz vakitleri

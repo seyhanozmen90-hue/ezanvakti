@@ -1,0 +1,42 @@
+VERCEL'E DEPLOY ADIMLARI
+========================
+
+1. GitHub'a Repository Oluştur:
+   - https://github.com/new adresine git
+   - Repository adı: ezanvakti
+   - Public seçin
+   - Create repository
+
+2. Bu komutları terminalden çalıştır:
+   cd c:\EZANVAKTI
+   git remote add origin https://github.com/KULLANICI_ADIN/ezanvakti.git
+   git branch -M main
+   git push -u origin main
+
+   NOT: KULLANICI_ADIN yerine kendi GitHub kullanıcı adınızı yazın!
+
+3. Vercel'e Deploy:
+   - https://vercel.com/new adresine git
+   - "Import Git Repository" tıkla
+   - GitHub'dan "ezanvakti" repo'sunu seç
+   - "Deploy" butonuna tıkla
+   - 2-3 dakika bekle
+
+4. Mobil Test:
+   - Vercel size şöyle bir link verecek: https://ezanvakti.vercel.app
+   - Bu linki telefondan aç!
+   - HTTPS olduğu için pusula çalışacak! 🕋
+
+==========================================
+
+ALTERNATIF: LOKAL TEST İÇİN NGROK
+==========================================
+
+Eğer GitHub/Vercel ile uğraşmak istemezseniz:
+
+1. https://ngrok.com adresine git, ücretsiz kayıt ol
+2. ngrok indir (Windows)
+3. Terminalde: ngrok http 3000
+4. Size verdiği https:// linkini telefondan aç
+
+==========================================
