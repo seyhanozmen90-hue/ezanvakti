@@ -54,7 +54,7 @@ export default function KiblePage() {
             Nasıl Kullanılır?
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            1. "Konumu Aktif Et" butonuna tıklayın<br />
+            1. &quot;Konumu Aktif Et&quot; butonuna tıklayın<br />
             2. Konum iznini verin<br />
             3. Cihazınızı düz tutun<br />
             4. 🕋 işaretine doğru dönün
@@ -104,7 +104,7 @@ export default function KiblePage() {
             <div className="text-sm text-gray-700 dark:text-gray-300">
               <p className="font-semibold mb-2">ℹ️ Teknik Detaylar:</p>
               <p className="mb-2">
-                Bu pusula, cihazınızın GPS'i ile konumunuzu ve manyetik sensörü ile yönünüzü tespit ederek Kıble yönünü hesaplar.
+                Bu pusula, cihazınızın GPS&apos;i ile konumunuzu ve manyetik sensörü ile yönünüzü tespit ederek Kıble yönünü hesaplar.
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400">
                 <span className="font-semibold">Hesaplama Yöntemi:</span> Büyük daire formülü (Great Circle)<br />
