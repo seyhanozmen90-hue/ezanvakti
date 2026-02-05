@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
@@ -210,9 +210,10 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     ? ((qiblaAngle - smoothHeading + 360) % 360)
     : (qiblaAngle ?? 0);
   
-  const error = qiblaAngle !== null && heading !== null
-    ? Math.abs(normalizeAngle(qiblaAngle - heading))
-    : null;
+  const error = useMemo(() => {
+    if (typeof qiblaAngle !== "number" || typeof heading !== "number") return null;
+    return Math.abs(normalizeAngle(qiblaAngle - heading));
+  }, [qiblaAngle, heading]);
   
   // Heading hazır mı?
   const isHeadingReady = heading !== null;
