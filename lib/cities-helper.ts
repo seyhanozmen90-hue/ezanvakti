@@ -61,8 +61,47 @@ export function getAllCityDistrictCombinations(): Array<{
 }
 
 /**
- * İstanbul'u getirir (varsayılan şehir)
+ * Varsayılan şehri getirir (İstanbul)
  */
 export function getDefaultCity(): City {
   return getCityBySlug('istanbul') || citiesData.cities[0];
+}
+
+/**
+ * Route parametrelerinden şehir bilgisini çıkarır
+ * - Eğer il parametresi varsa, o şehri döner
+ * - Yoksa varsayılan şehri (İstanbul) döner
+ */
+export function getCityFromParams(params: { il?: string }): City {
+  if (params.il) {
+    const city = getCityBySlug(params.il);
+    if (city) return city;
+  }
+  return getDefaultCity();
+}
+
+/**
+ * Search params veya route params'dan şehir adını al
+ * - Önce search params'a bakar (?city=istanbul)
+ * - Yoksa route params'a bakar (il parametresi)
+ * - Her ikisi de yoksa varsayılan şehir adını döner
+ */
+export function getCityNameFromParams(
+  searchParams?: { city?: string },
+  routeParams?: { il?: string }
+): string {
+  // Search params'dan city varsa onu kullan
+  if (searchParams?.city) {
+    const city = getCityBySlug(searchParams.city.toLowerCase());
+    return city?.name || searchParams.city;
+  }
+  
+  // Route params'dan il varsa onu kullan
+  if (routeParams?.il) {
+    const city = getCityBySlug(routeParams.il);
+    if (city) return city.name;
+  }
+  
+  // Varsayılan
+  return getDefaultCity().name;
 }

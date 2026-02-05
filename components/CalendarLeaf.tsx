@@ -1,6 +1,9 @@
 'use client';
 
 import { formatTurkishDate, formatHijri } from '@/lib/calendar';
+import { CalendarDay } from '@/lib/calendar-types';
+import { getCalendarDay } from '@/data/calendar-2026-official';
+import { getDefaultCity } from '@/lib/cities-helper';
 
 interface CalendarLeafProps {
   date: Date;
@@ -13,14 +16,23 @@ interface CalendarLeafProps {
     aksam: string;
     yatsi: string;
   };
+  calendarData?: CalendarDay;
 }
 
 export default function CalendarLeaf({ 
   date, 
-  cityLabel = 'İstanbul',
-  times 
+  cityLabel,
+  times,
+  calendarData
 }: CalendarLeafProps) {
-  const hijriDate = formatHijri(date);
+  // Varsayılan şehir merkezi fonksiyondan alınıyor
+  const defaultCity = getDefaultCity();
+  const displayCityLabel = cityLabel || defaultCity.name;
+  // Takvim verisini al (prop olarak gelmişse onu kullan, yoksa tarihten bul)
+  const dateString = date.toISOString().split('T')[0];
+  const dayData = calendarData || getCalendarDay(dateString);
+  
+  const hijriDate = dayData?.hijriDate || formatHijri(date);
   
   const day = date.getDate();
   const months = [
@@ -33,8 +45,8 @@ export default function CalendarLeaf({
   const dayNames = ['PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ'];
   const dayName = dayNames[date.getDay()];
 
-  // Mock vakitler - İstanbul için sabit
-  const istanbulTimes = {
+  // Varsayılan şehir vakitleri (mock - gerçek API entegrasyonunda değişecek)
+  const defaultCityTimes = {
     imsak: '05:45',
     gunes: '07:15',
     ogle: '12:45',
@@ -44,14 +56,7 @@ export default function CalendarLeaf({
   };
 
   // Seçilen şehir için vakitler (API'den gelirse kullan, yoksa mock)
-  const selectedCityTimes = times || {
-    imsak: '05:45',
-    gunes: '07:15',
-    ogle: '12:45',
-    ikindi: '15:30',
-    aksam: '18:00',
-    yatsi: '19:30',
-  };
+  const selectedCityTimes = times || defaultCityTimes;
 
   // Hicri tarihi parse et
   const hijriParts = hijriDate?.split(' ') || [];
@@ -64,12 +69,12 @@ export default function CalendarLeaf({
   const dayOfYear = Math.floor((date.getTime() - new Date(year, 0, 0).getTime()) / 86400000);
 
   return (
-    <div className="relative max-w-2xl mx-auto">
+    <div className="relative max-w-2xl mx-auto print:max-w-full">
       {/* Kağıt Gölge Efekti */}
-      <div className="absolute inset-0 bg-gray-300 dark:bg-gray-900 transform rotate-0.5 scale-[0.99] opacity-30" />
+      <div className="absolute inset-0 bg-gray-300 dark:bg-gray-900 transform rotate-0.5 scale-[0.99] opacity-30 print:hidden" />
       
-      {/* Ana Takvim Yaprağı - SİYAH BEYAZ */}
-      <div className="relative bg-white dark:bg-gray-900 shadow-2xl border-[3px] border-black dark:border-gray-300">
+      {/* Ana Takvim Yaprağı - SİYAH BEYAZ - Mobilde 10-15% küçük */}
+      <div className="relative bg-white dark:bg-gray-900 shadow-2xl border-[3px] border-black dark:border-gray-300 scale-[0.85] sm:scale-90 md:scale-95 lg:scale-100 origin-top print:scale-100 print:shadow-none print:border-2">
         {/* Yıldız Bordür (Üst) */}
         <div className="border-b-[2px] border-black dark:border-gray-300 py-0.5">
           <div className="flex justify-center text-[9px] leading-none">
@@ -115,7 +120,7 @@ export default function CalendarLeaf({
 
           {/* Grid: Sol Saat + Ortada Gün + Sağ Saat */}
           <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-start">
-            {/* Sol Bölüm: Saat + İstanbul Vakitleri */}
+            {/* Sol Bölüm: Saat + Varsayılan Şehir Vakitleri */}
             <div className="flex flex-col items-center">
               {/* Sol Saat */}
               <div className="w-[90px] h-[90px] rounded-full border-[3px] border-black dark:border-white relative bg-white dark:bg-gray-900 mb-1">
@@ -130,35 +135,35 @@ export default function CalendarLeaf({
                   <circle cx="50" cy="50" r="3" className="fill-black dark:fill-white" />
                 </svg>
               </div>
-              <div className="text-[12px] font-black mb-2 text-black dark:text-white">İstanbul</div>
+              <div className="text-[12px] font-black mb-2 text-black dark:text-white">{defaultCity.name}</div>
 
-              {/* İstanbul Vakitleri Tablosu - SABİT */}
+              {/* Varsayılan Şehir Vakitleri Tablosu */}
               <div className="border-[3px] border-black dark:border-white bg-white dark:bg-gray-900 w-full">
                 <table className="w-full text-[13px]">
                   <tbody>
                     <tr className="border-b-[2px] border-black dark:border-white">
                       <td className="py-1 px-2 font-black text-left text-black dark:text-white">Güneş</td>
-                      <td className="py-1 px-2 font-black text-right tabular-nums text-black dark:text-white">{istanbulTimes.gunes}</td>
+                      <td className="py-1 px-2 font-black text-right tabular-nums text-black dark:text-white">{defaultCityTimes.gunes}</td>
                     </tr>
                     <tr className="border-b-[2px] border-black dark:border-white">
                       <td className="py-1 px-2 font-black text-left text-black dark:text-white">Öğle</td>
-                      <td className="py-1 px-2 font-black text-right tabular-nums text-black dark:text-white">{istanbulTimes.ogle}</td>
+                      <td className="py-1 px-2 font-black text-right tabular-nums text-black dark:text-white">{defaultCityTimes.ogle}</td>
                     </tr>
                     <tr className="border-b-[2px] border-black dark:border-white">
                       <td className="py-1 px-2 font-black text-left text-black dark:text-white">İkindi</td>
-                      <td className="py-1 px-2 font-black text-right tabular-nums text-black dark:text-white">{istanbulTimes.ikindi}</td>
+                      <td className="py-1 px-2 font-black text-right tabular-nums text-black dark:text-white">{defaultCityTimes.ikindi}</td>
                     </tr>
                     <tr className="border-b-[2px] border-black dark:border-white">
                       <td className="py-1 px-2 font-black text-left text-black dark:text-white">Akşam</td>
-                      <td className="py-1 px-2 font-black text-right tabular-nums text-black dark:text-white">{istanbulTimes.aksam}</td>
+                      <td className="py-1 px-2 font-black text-right tabular-nums text-black dark:text-white">{defaultCityTimes.aksam}</td>
                     </tr>
                     <tr className="border-b-[2px] border-black dark:border-white">
                       <td className="py-1 px-2 font-black text-left text-black dark:text-white">Yatsı</td>
-                      <td className="py-1 px-2 font-black text-right tabular-nums text-black dark:text-white">{istanbulTimes.yatsi}</td>
+                      <td className="py-1 px-2 font-black text-right tabular-nums text-black dark:text-white">{defaultCityTimes.yatsi}</td>
                     </tr>
                     <tr>
                       <td className="py-1 px-2 font-black text-left text-black dark:text-white">İmsak</td>
-                      <td className="py-1 px-2 font-black text-right tabular-nums text-black dark:text-white">{istanbulTimes.imsak}</td>
+                      <td className="py-1 px-2 font-black text-right tabular-nums text-black dark:text-white">{defaultCityTimes.imsak}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -187,9 +192,9 @@ export default function CalendarLeaf({
                   <circle cx="50" cy="50" r="3" className="fill-black dark:fill-white" />
                 </svg>
               </div>
-              <div className="text-[12px] font-black mb-2 text-black dark:text-white">{cityLabel}</div>
+              <div className="text-[12px] font-black mb-2 text-black dark:text-white">{displayCityLabel}</div>
 
-              {/* Seçilen Şehir Vakitleri Tablosu - DİNAMİK */}
+              {/* Seçilen Şehir Vakitleri Tablosu */}
               <div className="border-[3px] border-black dark:border-white bg-white dark:bg-gray-900 w-full">
                 <table className="w-full text-[13px]">
                   <tbody>
@@ -236,21 +241,51 @@ export default function CalendarLeaf({
           <h3 className="text-[60px] font-black tracking-[0.18em] leading-none text-black dark:text-white">{dayName}</h3>
         </div>
 
-        {/* Alt Bilgi - Haşarın gizlenmesi */}
-        <div className="text-center py-2.5 border-b-[2px] border-black dark:border-gray-300">
+        {/* Alt Bilgi - Özel Günler / Mevsimsel */}
+        <div className="text-center py-2.5 border-b-[2px] border-black dark:border-gray-300 min-h-[32px]">
           <div className="text-[10px] px-4 leading-snug text-black dark:text-white">
-            <span className="font-black italic">(Haşaratın gizlenmesi)</span>
+            {dayData?.religiousDays && dayData.religiousDays.length > 0 ? (
+              <span className="font-black italic">⭐ {dayData.religiousDays[0].name}</span>
+            ) : dayData?.seasonalInfo ? (
+              <span className="font-black italic">🌿 {dayData.seasonalInfo.name}</span>
+            ) : dayData?.specialNotes && dayData.specialNotes.length > 0 ? (
+              <span className="font-black italic">{dayData.specialNotes[0]}</span>
+            ) : (
+              <span className="font-black italic">(Günün bereketine mazhar olunuz)</span>
+            )}
           </div>
         </div>
 
-        {/* Şiir/Söz Bölümü */}
-        <div className="text-center py-3 border-b-[2px] border-black dark:border-gray-300">
+        {/* Şiir/Söz Bölümü - DİNAMİK */}
+        <div className="text-center py-3 border-b-[2px] border-black dark:border-gray-300 min-h-[90px] flex items-center justify-center">
           <div className="text-[11px] px-6 leading-snug text-black dark:text-white">
-            <p className="font-normal italic">
-              Kullahın sat yine lâkin boğuncul olman nâmerde<br />
-              Cihanda kelle sağ olsun, külah eksik değil merde
-            </p>
-            <div className="text-[10px] mt-2 font-black">ÜÇÜNCÜ SELİM</div>
+            {dayData?.quote ? (
+              <>
+                <p className="font-normal italic">
+                  {dayData.quote.text}
+                </p>
+                <div className="text-[10px] mt-2 font-black uppercase">
+                  {dayData.quote.author || dayData.quote.source || ''}
+                </div>
+              </>
+            ) : dayData?.historyToday && dayData.historyToday.length > 0 ? (
+              <>
+                <p className="font-normal italic">
+                  {dayData.historyToday[0].description}
+                </p>
+                <div className="text-[10px] mt-2 font-black">
+                  {dayData.historyToday[0].title}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="font-normal italic">
+                  Her gün yeni bir fırsattır.<br />
+                  Hayatınızı şükürle doldurun.
+                </p>
+                <div className="text-[10px] mt-2 font-black">HİKMETLİ SÖZ</div>
+              </>
+            )}
           </div>
         </div>
 

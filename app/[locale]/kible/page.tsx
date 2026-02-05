@@ -18,7 +18,7 @@ export default function KiblePage() {
   return (
     <div className="container mx-auto px-4 py-12 max-w-6xl">
       {/* Header */}
-      <div className="text-center mb-12">
+      <div className="text-center mb-8">
         <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4 flex items-center justify-center gap-4">
           <span className="text-5xl">🧭</span>
           <span>KIBLE YÖNÜ</span>
@@ -27,6 +27,22 @@ export default function KiblePage() {
         <p className="text-lg text-gray-600 dark:text-gray-400">
           Canlı pusula ile Kabe yönünü bulun
         </p>
+      </div>
+
+      {/* Önemli Bilgi Bandı */}
+      <div className="mb-6 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 border-l-4 border-blue-500 dark:border-blue-400 rounded-lg p-4 shadow-md">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl flex-shrink-0">ℹ️</span>
+          <div>
+            <h3 className="font-bold text-blue-900 dark:text-blue-300 mb-1">
+              Konum İzni Gereklidir
+            </h3>
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              Kıble yönünü doğru hesaplayabilmek için tarayıcınızın konum erişimine izin vermeniz gerekmektedir. 
+              Konum bilginiz hiçbir şekilde kaydedilmez veya paylaşılmaz.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Canlı Pusula */}

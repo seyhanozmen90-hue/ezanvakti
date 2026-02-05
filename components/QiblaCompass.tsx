@@ -15,10 +15,25 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   const [compassSupported, setCompassSupported] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [needsPermission, setNeedsPermission] = useState<boolean>(false);
+  const [selectedCity, setSelectedCity] = useState<string>('');
 
   // Kabe koordinatları (Mekke)
   const KAABA_LAT = 21.4225;
   const KAABA_LON = 39.8262;
+
+  // Başlıca şehir koordinatları (Fallback için)
+  const cityCoordinates: Record<string, { lat: number; lon: number; qibla: number }> = {
+    'İstanbul': { lat: 41.0082, lon: 28.9784, qibla: 147 },
+    'Ankara': { lat: 39.9334, lon: 32.8597, qibla: 151 },
+    'İzmir': { lat: 38.4237, lon: 27.1428, qibla: 143 },
+    'Bursa': { lat: 40.1826, lon: 29.0665, qibla: 148 },
+    'Antalya': { lat: 36.8969, lon: 30.7133, qibla: 152 },
+    'Adana': { lat: 37.0000, lon: 35.3213, qibla: 157 },
+    'Konya': { lat: 37.8667, lon: 32.4833, qibla: 153 },
+    'Gaziantep': { lat: 37.0662, lon: 37.3833, qibla: 161 },
+    'Diyarbakır': { lat: 37.9144, lon: 40.2306, qibla: 165 },
+    'Trabzon': { lat: 41.0015, lon: 39.7178, qibla: 163 },
+  };
 
   // Kıble açısını hesapla
   const calculateQiblaAngle = (lat: number, lon: number): number => {
@@ -254,10 +269,43 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
         </button>
       )}
 
-      {/* Hata Mesajı */}
+      {/* Hata Mesajı + Fallback Şehir Seçimi */}
       {error && (
-        <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-          <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+        <div className="mt-4 space-y-3">
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+            <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+          </div>
+          
+          {/* Fallback: Şehir Seçimi */}
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+            <h4 className="text-sm font-bold text-blue-900 dark:text-blue-300 mb-2">
+              📍 Şehir Seçerek Yaklaşık Kıble Yönü
+            </h4>
+            <p className="text-xs text-blue-700 dark:text-blue-400 mb-3">
+              Konum izni vermek istemiyorsanız, şehrinizi seçerek yaklaşık kıble yönünü öğrenebilirsiniz.
+            </p>
+            <select
+              value={selectedCity}
+              onChange={(e) => {
+                const city = e.target.value;
+                setSelectedCity(city);
+                if (city && cityCoordinates[city]) {
+                  const coords = cityCoordinates[city];
+                  setLocation({ lat: coords.lat, lon: coords.lon });
+                  setQiblaAngle(coords.qibla);
+                  setError('');
+                }
+              }}
+              className="w-full px-4 py-2 border-2 border-blue-300 dark:border-blue-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Şehir Seçiniz</option>
+              {Object.keys(cityCoordinates).map((city) => (
+                <option key={city} value={city}>
+                  {city} (Kıble: {cityCoordinates[city].qibla}°)
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 

@@ -32,38 +32,38 @@ export default function CountdownTimer({ targetTime, prayerName, locale }: Count
 
   if (timeRemaining.totalSeconds <= 0) {
     return (
-      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+      <div className="text-2xl font-bold text-navy-900 dark:text-green-400">
         🕌 {t('timeEntered')}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-4 sm:gap-5">
       <div className="text-center">
-        <div className="text-sm text-white/80 dark:text-white/70 mb-2">
+        <div className="text-sm sm:text-base font-semibold text-navy-900 dark:text-gold-400/90 mb-3 sm:mb-4">
           {t('remainingTime', { prayer: prayerName })}
         </div>
-        <div className="flex gap-4 items-center justify-center">
-          <div className="flex flex-col items-center bg-white dark:bg-gray-800 rounded-lg p-4 min-w-[80px] shadow-lg">
-            <div className="text-4xl font-bold text-primary-700 dark:text-primary-400">
+        <div className="flex gap-2 sm:gap-3 md:gap-4 items-center justify-center">
+          <div className="flex flex-col items-center bg-navy-100 dark:bg-navy-darkest/60 backdrop-blur-md rounded-xl p-3 sm:p-4 md:p-5 min-w-[60px] sm:min-w-[70px] md:min-w-[85px] shadow-xl border-2 border-gold-500 dark:border-gold-500/20">
+            <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-navy-900 dark:text-gold-400">
               {String(timeRemaining.hours).padStart(2, '0')}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('hours')}</div>
+            <div className="text-[9px] sm:text-[10px] md:text-xs font-semibold text-navy-900 dark:text-gold-400/80 mt-1 sm:mt-1.5 uppercase tracking-wide">{t('hours')}</div>
           </div>
-          <div className="text-3xl font-bold text-white/60">:</div>
-          <div className="flex flex-col items-center bg-white dark:bg-gray-800 rounded-lg p-4 min-w-[80px] shadow-lg">
-            <div className="text-4xl font-bold text-primary-700 dark:text-primary-400">
+          <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold-600 dark:text-gold-400/60">:</div>
+          <div className="flex flex-col items-center bg-navy-100 dark:bg-navy-darkest/60 backdrop-blur-md rounded-xl p-3 sm:p-4 md:p-5 min-w-[60px] sm:min-w-[70px] md:min-w-[85px] shadow-xl border-2 border-gold-500 dark:border-gold-500/20">
+            <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-navy-900 dark:text-gold-400">
               {String(timeRemaining.minutes).padStart(2, '0')}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('minutes')}</div>
+            <div className="text-[9px] sm:text-[10px] md:text-xs font-semibold text-navy-900 dark:text-gold-400/80 mt-1 sm:mt-1.5 uppercase tracking-wide">{t('minutes')}</div>
           </div>
-          <div className="text-3xl font-bold text-white/60">:</div>
-          <div className="flex flex-col items-center bg-white dark:bg-gray-800 rounded-lg p-4 min-w-[80px] shadow-lg">
-            <div className="text-4xl font-bold text-primary-700 dark:text-primary-400">
+          <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold-600 dark:text-gold-400/60">:</div>
+          <div className="flex flex-col items-center bg-navy-100 dark:bg-navy-darkest/60 backdrop-blur-md rounded-xl p-3 sm:p-4 md:p-5 min-w-[60px] sm:min-w-[70px] md:min-w-[85px] shadow-xl border-2 border-gold-500 dark:border-gold-500/20">
+            <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-navy-900 dark:text-gold-400">
               {String(timeRemaining.seconds).padStart(2, '0')}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('seconds')}</div>
+            <div className="text-[9px] sm:text-[10px] md:text-xs font-semibold text-navy-900 dark:text-gold-400/80 mt-1 sm:mt-1.5 uppercase tracking-wide">{t('seconds')}</div>
           </div>
         </div>
       </div>

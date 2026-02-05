@@ -1,0 +1,10 @@
+<svg width="800" height="400" viewBox="0 0 800 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Logo placeholder - ger�ek logoyu PNG olarak kullanaca1z -->
+  <rect width="800" height="400" fill="#2f3d5a"/>
+  <text x="400" y="200" font-family="Arial, sans-serif" font-size="80" font-weight="bold" fill="#f59e0b" text-anchor="middle">
+    EZAN VAKTI
+  </text>
+  <text x="400" y="250" font-family="Arial, sans-serif" font-size="24" fill="#f59e0b" text-anchor="middle" opacity="0.8">
+    =L
+  </text>
+</svg>

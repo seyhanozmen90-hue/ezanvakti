@@ -18,34 +18,43 @@ export default function PrayerTimeCard({ prayerName, time, isNext, locale }: Pra
   // Vakit ismini i18n'den al
   const displayName = t(prayerName);
   const isPassed = isPrayerTimePassed(time);
+  
+  // İmsak için özel şeffaf stil
+  const isImsak = prayerName === 'imsak';
 
   return (
     <div
-      className={`relative p-6 rounded-xl transition-all duration-300 ${
+      className={`relative transition-all duration-300 ${
         isNext
-          ? 'bg-gradient-to-br from-accent-500 to-accent-600 text-white shadow-2xl scale-105 ring-4 ring-accent-400/50'
+          ? 'p-3 md:p-3.5 rounded-xl border-2 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-navy-darker/95 dark:to-navy-dark/95 backdrop-blur-md text-navy-900 dark:text-gold-300 shadow-xl scale-105 ring-2 ring-gold-500 dark:ring-gold-500/50 border-gold-500 dark:border-gold-500/70'
           : isPassed
-          ? 'bg-gray-100 dark:bg-gray-800 opacity-60'
-          : 'bg-white dark:bg-gray-800 hover:shadow-lg'
-      } shadow-md`}
+          ? 'p-3 md:p-3.5 rounded-xl border bg-gray-200 dark:bg-navy-darker/50 border-gold-400/40 dark:border-navy-dark/60 opacity-60'
+          : isImsak
+          ? 'p-2 md:p-2.5 rounded-lg border bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700/25 dark:via-slate-600/15 dark:to-slate-700/25 backdrop-blur-lg border-gold-400/60 dark:border-slate-400/50 hover:border-gold-500 dark:hover:border-slate-400/70 hover:bg-gray-300 dark:hover:bg-slate-700/35 hover:shadow-md'
+          : 'p-3 md:p-3.5 rounded-xl border-2 bg-white dark:bg-gradient-to-br dark:from-navy-dark/70 dark:to-navy-darker/70 backdrop-blur-md border-gold-500 dark:border-gold-500/50 hover:border-gold-600 dark:hover:border-gold-500/70 hover:shadow-xl'
+      } shadow-lg`}
     >
       {isNext && (
-        <div className="absolute -top-3 right-4 bg-white dark:bg-gray-900 text-accent-600 dark:text-accent-400 px-3 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse">
+        <div className="absolute -top-1.5 right-2 bg-yellow-500 dark:bg-gold-500 text-navy-darkest px-2 py-0.5 rounded-full text-[8px] font-bold shadow-md animate-pulse border border-gold-400 dark:border-gold-400">
           {tTime('approaching')}
         </div>
       )}
       
       {isPassed && !isNext && (
-        <div className="absolute -top-3 right-4 bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+        <div className="absolute -top-1.5 right-2 bg-gray-300 dark:bg-navy-darkest text-navy-900 dark:text-gold-400/60 px-2 py-0.5 rounded-full text-[8px] font-bold shadow-md border border-gold-400/50 dark:border-gold-500/30">
           {tTime('passed')}
         </div>
       )}
 
-      <div className="flex flex-col items-center gap-2">
-        <div className={`text-sm font-medium ${isNext ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+      <div className={`flex flex-col items-center ${isImsak ? 'gap-0.5' : 'gap-1.5'}`}>
+        <div className={`font-semibold tracking-wide uppercase ${
+          isNext ? 'text-[10px] text-navy-900 dark:text-gold-400' : isImsak ? 'text-[7px] text-navy-900 dark:text-slate-300' : 'text-[10px] text-navy-900 dark:text-gold-400/80'
+        }`}>
           {displayName}
         </div>
-        <div className={`text-3xl font-bold ${isNext ? 'text-white' : 'text-primary-700 dark:text-primary-400'}`}>
+        <div className={`font-bold tracking-tight ${
+          isNext ? 'text-lg text-navy-900 dark:text-gold-400 drop-shadow-md' : isImsak ? 'text-sm text-navy-900 dark:text-slate-200' : 'text-lg text-navy-900 dark:text-gold-500'
+        }`}>
           {time}
         </div>
       </div>

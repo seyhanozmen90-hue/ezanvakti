@@ -1,5 +1,4 @@
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { getTodayPrayerTimes, getMonthlyPrayerTimes } from '@/lib/api';
@@ -11,6 +10,7 @@ import MonthlyTable from '@/components/MonthlyTable';
 import ThemeToggle from '@/components/ThemeToggle';
 import CitySelector from '@/components/CitySelector';
 import JsonLd from '@/components/JsonLd';
+import CityComingSoon from '@/components/CityComingSoon';
 import { PrayerName } from '@/lib/types';
 
 interface CityPageProps {
@@ -31,7 +31,23 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
   const city = getCityBySlug(params.il);
   
   if (!city) {
-    return { title: 'Sayfa Bulunamadı' };
+    // Tanımsız şehir için SEO metadata
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ezanvakti.com';
+    return {
+      title: 'Bu Şehir Yakında Eklenecek | Ezan Vakitleri',
+      description: 'Namaz vakitleri ve takvim bilgileri bu şehir için henüz yayında değil. Veriler kademeli olarak eklenmektedir.',
+      robots: {
+        index: false,
+        follow: false,
+        googleBot: {
+          index: false,
+          follow: false,
+        },
+      },
+      alternates: {
+        canonical: baseUrl,
+      },
+    };
   }
 
   const tSeo = await getTranslations({ locale: params.locale, namespace: 'seo' });
@@ -117,8 +133,9 @@ export const revalidate = 3600;
 export default async function CityPage({ params }: CityPageProps) {
   const city = getCityBySlug(params.il);
 
+  // Şehir bulunamazsa "Yakında Eklenecek" sayfası göster
   if (!city) {
-    notFound();
+    return <CityComingSoon requestedSlug={params.il} locale={params.locale} />;
   }
 
   const t = await getTranslations({ locale: params.locale, namespace: 'site' });
@@ -148,50 +165,98 @@ export default async function CityPage({ params }: CityPageProps) {
   const nextPrayer = getNextPrayerTime(todayTimes);
   const currentDate = new Date();
 
-  // JSON-LD Structured Data (Google için)
+  // JSON-LD Structured Data - Daha detaylı namaz vakitleri schema
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ezanvakti.com';
+  const todayDateString = new Date().toISOString().split('T')[0];
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'WebPage',
-    name: `${city.name} Ezan Vakitleri`,
-    description: `${city.name} için güncel namaz vakitleri ve ezan saatleri`,
-    url: `${baseUrl}/${city.slug}`,
+    '@type': ['WebSite', 'LocalBusiness'],
+    name: 'Ezan Vakitleri',
+    alternateName: 'Namaz Vakitleri',
+    description: `${city.name} ve Türkiye'nin tüm illeri için güncel, doğru ve Diyanet onaylı namaz vakitleri`,
+    url: baseUrl,
+    inLanguage: 'tr-TR',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: `${baseUrl}/?q={search_term_string}`,
+      'query-input': 'required name=search_term_string',
+    },
+    about: {
+      '@type': 'Thing',
+      name: 'Namaz Vakitleri',
+      description: 'İslam dininde farz olan beş vakit namazın vakitleri',
+    },
     mainEntity: {
       '@type': 'Schedule',
-      name: `${city.name} Namaz Vakitleri`,
-      description: `${city.name} için günlük namaz vakitleri cetveli`,
+      name: `${city.name} Namaz Vakitleri - ${formatDate(currentDate)}`,
+      description: `${city.name} için ${formatDate(currentDate)} tarihli günlük namaz vakitleri. Diyanet İşleri Başkanlığı verilerine göre hesaplanmıştır.`,
       scheduleTimezone: 'Europe/Istanbul',
       ...(todayTimes && {
         event: [
           {
             '@type': 'Event',
-            name: 'İmsak',
-            startDate: `${new Date().toISOString().split('T')[0]}T${todayTimes.imsak}:00+03:00`,
+            name: 'İmsak Vakti',
+            description: `${city.name} İmsak vakti - Sabah namazı için hazırlık zamanı`,
+            startDate: `${todayDateString}T${todayTimes.imsak}:00+03:00`,
+            location: {
+              '@type': 'Place',
+              name: city.name,
+              address: {
+                '@type': 'PostalAddress',
+                addressCountry: 'TR',
+                addressLocality: city.name,
+              },
+            },
           },
           {
             '@type': 'Event',
-            name: 'Güneş',
-            startDate: `${new Date().toISOString().split('T')[0]}T${todayTimes.gunes}:00+03:00`,
+            name: 'Güneş Doğuşu',
+            description: `${city.name} Güneş doğuşu vakti - Sabah namazının son zamanı`,
+            startDate: `${todayDateString}T${todayTimes.gunes}:00+03:00`,
+            location: {
+              '@type': 'Place',
+              name: city.name,
+            },
           },
           {
             '@type': 'Event',
-            name: 'Öğle',
-            startDate: `${new Date().toISOString().split('T')[0]}T${todayTimes.ogle}:00+03:00`,
+            name: 'Öğle Namazı Vakti',
+            description: `${city.name} Öğle namazı vakti`,
+            startDate: `${todayDateString}T${todayTimes.ogle}:00+03:00`,
+            location: {
+              '@type': 'Place',
+              name: city.name,
+            },
           },
           {
             '@type': 'Event',
-            name: 'İkindi',
-            startDate: `${new Date().toISOString().split('T')[0]}T${todayTimes.ikindi}:00+03:00`,
+            name: 'İkindi Namazı Vakti',
+            description: `${city.name} İkindi namazı vakti`,
+            startDate: `${todayDateString}T${todayTimes.ikindi}:00+03:00`,
+            location: {
+              '@type': 'Place',
+              name: city.name,
+            },
           },
           {
             '@type': 'Event',
-            name: 'Akşam',
-            startDate: `${new Date().toISOString().split('T')[0]}T${todayTimes.aksam}:00+03:00`,
+            name: 'Akşam Namazı Vakti (Ezan)',
+            description: `${city.name} Akşam ezanı ve namaz vakti`,
+            startDate: `${todayDateString}T${todayTimes.aksam}:00+03:00`,
+            location: {
+              '@type': 'Place',
+              name: city.name,
+            },
           },
           {
             '@type': 'Event',
-            name: 'Yatsı',
-            startDate: `${new Date().toISOString().split('T')[0]}T${todayTimes.yatsi}:00+03:00`,
+            name: 'Yatsı Namazı Vakti',
+            description: `${city.name} Yatsı namazı vakti`,
+            startDate: `${todayDateString}T${todayTimes.yatsi}:00+03:00`,
+            location: {
+              '@type': 'Place',
+              name: city.name,
+            },
           },
         ],
       }),
@@ -218,108 +283,139 @@ export default async function CityPage({ params }: CityPageProps) {
   return (
     <>
       <JsonLd data={jsonLd} />
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <header className="mb-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <Link href="/">
-              <h1 className="text-3xl md:text-4xl font-bold text-primary-700 dark:text-primary-400 mb-2 flex items-center gap-3">
-                🕌 {t('title')}
-              </h1>
-            </Link>
-            <p className="text-gray-600 dark:text-gray-400">
-              {t('subtitle')}
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-navy-darkest dark:via-navy-darker dark:to-navy-dark">
+        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-10 max-w-7xl">
+          {/* SEO H1 + Location & Date */}
+          <header className="mb-6 sm:mb-8">
+            {/* SEO H1 - Görünür başlık */}
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-navy-900 dark:text-white mb-3 text-center">
+              {city.name} Namaz Vakitleri – {formatDate(currentDate)}
+            </h1>
+            <p className="text-center text-navy-700 dark:text-gold-300/80 text-sm sm:text-base mb-6">
+              Diyanet İşleri Başkanlığı verilerine göre güncel ve doğru namaz saatleri
             </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <CitySelector currentCity={city} locale={params.locale} />
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
 
-      <div className="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              📍 {city.name}
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              {formatDate(currentDate)}
-            </p>
-            {todayTimes.hijriDate && (
-              <p className="text-sm text-gray-500 dark:text-gray-500">
-                {formatHijriDate(todayTimes.hijriDate)}
-              </p>
-            )}
-          </div>
-          {city.districts.length > 0 && (
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              {tLocation('selectDistrict')}
+            {/* Location & Date Card */}
+            <div className="bg-white dark:bg-gradient-to-br dark:from-navy-dark/90 dark:to-navy-darker/90 backdrop-blur-md rounded-2xl shadow-xl dark:shadow-2xl p-5 sm:p-6 md:p-8 border-2 border-gold-500 dark:border-gold-500/30">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 sm:gap-6">
+                {/* Sol: Konum & Tarih Bilgisi */}
+                <div>
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-navy-900 dark:bg-gradient-to-r dark:from-gold-400 dark:to-gold-600 dark:bg-clip-text dark:text-transparent mb-2 sm:mb-3 flex items-center gap-2">
+                    📍 {city.name}
+                  </div>
+                  <p className="text-navy-900 dark:text-gold-300/80 text-sm sm:text-base md:text-lg font-semibold">
+                    {formatDate(currentDate)}
+                  </p>
+                  {todayTimes.hijriDate && (
+                    <p className="text-xs sm:text-sm text-navy-900 dark:text-gold-400/60 mt-1">
+                      {formatHijriDate(todayTimes.hijriDate)}
+                    </p>
+                  )}
+                  {/* Duvar Takvimi Linki */}
+                  <Link
+                    href={`/${city.slug}/takvim`}
+                    className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 bg-gradient-to-r from-gold-500/10 to-gold-600/10 dark:from-gold-500/20 dark:to-gold-600/20 hover:from-gold-500/20 hover:to-gold-600/20 dark:hover:from-gold-500/30 dark:hover:to-gold-600/30 border border-gold-500/30 dark:border-gold-500/40 rounded-lg text-sm font-semibold text-navy-900 dark:text-gold-300 transition-all hover:scale-105"
+                  >
+                    📅 Bugünün Duvar Takvimi
+                  </Link>
+                </div>
+
+                {/* Sağ: Konum Seçici */}
+                <div className="flex-shrink-0">
+                  <CitySelector currentCity={city} locale={params.locale} />
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Next Prayer Countdown - BIG CARD */}
+          {nextPrayer && (
+            <div className="mb-6 sm:mb-8 bg-white dark:bg-gradient-to-br dark:from-navy-dark/90 dark:to-navy-darker/90 backdrop-blur-md rounded-2xl shadow-xl dark:shadow-2xl p-5 sm:p-6 md:p-8 text-navy-900 dark:text-gold-300 border-2 border-gold-500 dark:border-gold-500/30">
+              <div className="text-center mb-3 sm:mb-4">
+                <h2 className="text-base sm:text-lg md:text-xl font-bold mb-1 sm:mb-2 flex items-center justify-center gap-2 text-navy-900 dark:text-gold-300">
+                  <span className="text-xl sm:text-2xl">🕌</span>
+                  <span>{tPrayer('nextPrayer')}</span>
+                </h2>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2 drop-shadow-lg text-navy-900 dark:text-gold-400">
+                  {nextPrayer.displayName}
+                </div>
+                <div className="text-xl sm:text-2xl md:text-3xl font-mono font-bold bg-navy-100 dark:bg-navy-darkest/40 py-1.5 sm:py-2 px-3 sm:px-4 rounded-lg inline-block border-2 border-gold-500 dark:border-gold-500/20 text-navy-900 dark:text-gold-400">
+                  {nextPrayer.time}
+                </div>
+              </div>
+              <CountdownTimer 
+                targetTime={nextPrayer.time} 
+                prayerName={nextPrayer.displayName}
+                locale={params.locale}
+              />
             </div>
           )}
-        </div>
-      </div>
 
-      {nextPrayer && (
-        <div className="mb-8 bg-gradient-to-br from-primary-600 to-primary-800 dark:from-primary-700 dark:to-primary-900 rounded-2xl shadow-2xl p-8 text-white">
-          <div className="text-center mb-6">
-            <h3 className="text-xl md:text-2xl font-semibold mb-2">
-              🕌 {tPrayer('nextPrayer')}
-            </h3>
-            <div className="text-5xl md:text-6xl font-bold mb-2">
-              {nextPrayer.displayName}
-            </div>
-            <div className="text-3xl md:text-4xl font-mono">
-              {nextPrayer.time}
+          {/* Today's Prayer Times */}
+          <div className="mb-8 sm:mb-10">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-navy-900 dark:bg-gradient-to-r dark:from-gold-400 dark:to-gold-600 dark:bg-clip-text dark:text-transparent mb-5 sm:mb-6 flex items-center gap-2 sm:gap-3">
+              <span className="text-2xl sm:text-3xl md:text-4xl">📅</span>
+              <span className="text-navy-900 dark:text-transparent">{tPrayer('todaysPrayers')}</span>
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+              {(['imsak', 'gunes', 'ogle', 'ikindi', 'aksam', 'yatsi'] as PrayerName[]).map((prayerName) => (
+                <PrayerTimeCard
+                  key={prayerName}
+                  prayerName={prayerName}
+                  time={todayTimes[prayerName]}
+                  isNext={nextPrayer?.name === prayerName}
+                  locale={params.locale}
+                />
+              ))}
             </div>
           </div>
-          <CountdownTimer 
-            targetTime={nextPrayer.time} 
-            prayerName={nextPrayer.displayName}
-            locale={params.locale}
-          />
+
+          {/* Monthly Table */}
+          {monthlyTimes.length > 0 && (
+            <MonthlyTable times={monthlyTimes} locale={params.locale} />
+          )}
+
+          {/* Footer */}
+          <footer className="mt-10 sm:mt-12 md:mt-16 text-center text-xs sm:text-sm text-navy-900 dark:text-gold-400/70 bg-white dark:bg-navy-darkest/60 backdrop-blur-md rounded-2xl p-5 sm:p-6 md:p-8 border-2 border-gold-500 dark:border-gold-500/20 shadow-lg dark:shadow-none">
+            <p className="mb-2 font-semibold">
+              {tFooter('dataSource')}{' '}
+              <a
+                href="https://www.diyanet.gov.tr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-navy-900 dark:text-gold-500 hover:text-gold-600 dark:hover:text-gold-400 hover:underline font-bold transition-colors"
+              >
+                {tFooter('dataProvider')}
+              </a>
+              {' '}{tFooter('dataProviderLink')}
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-2">
+              <a
+                href="/hakkimizda"
+                className="text-navy-700 dark:text-gold-400/60 hover:text-gold-600 dark:hover:text-gold-400 hover:underline transition-colors"
+              >
+                Hakkımızda
+              </a>
+              <span className="text-navy-400 dark:text-gold-400/30">•</span>
+              <a
+                href="/iletisim"
+                className="text-navy-700 dark:text-gold-400/60 hover:text-gold-600 dark:hover:text-gold-400 hover:underline transition-colors"
+              >
+                İletişim
+              </a>
+              <span className="text-navy-400 dark:text-gold-400/30">•</span>
+              <a
+                href="/gizlilik-politikasi"
+                className="text-navy-700 dark:text-gold-400/60 hover:text-gold-600 dark:hover:text-gold-400 hover:underline transition-colors"
+              >
+                Gizlilik Politikası
+              </a>
+            </div>
+            <p className="text-navy-900 dark:text-gold-400/50">
+              © 2026 {t('title')}. {t('copyright')}
+            </p>
+          </footer>
         </div>
-      )}
-
-      <div className="mb-8">
-        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-          📅 {tPrayer('todaysPrayers')}
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {(['imsak', 'gunes', 'ogle', 'ikindi', 'aksam', 'yatsi'] as PrayerName[]).map((prayerName) => (
-            <PrayerTimeCard
-              key={prayerName}
-              prayerName={prayerName}
-              time={todayTimes[prayerName]}
-              isNext={nextPrayer?.name === prayerName}
-              locale={params.locale}
-            />
-          ))}
-        </div>
-      </div>
-
-      {monthlyTimes.length > 0 && (
-        <MonthlyTable times={monthlyTimes} locale={params.locale} />
-      )}
-
-      <footer className="mt-12 text-center text-sm text-gray-600 dark:text-gray-400">
-        <p>
-          {tFooter('dataSource')}{' '}
-          <a
-            href="https://www.diyanet.gov.tr"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary-600 dark:text-primary-400 hover:underline"
-          >
-            {tFooter('dataProvider')}
-          </a>
-          {' '}{tFooter('dataProviderLink')}
-        </p>
-        <p className="mt-2">
-          © 2026 {t('title')}. {t('copyright')}
-        </p>
-      </footer>
       </div>
     </>
   );

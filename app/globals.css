@@ -3,27 +3,28 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 249, 250, 251;
-  --background-end-rgb: 255, 255, 255;
+  /* Gündüz modu: Lacivert yazılar */
+  --foreground-rgb: 20, 26, 38; /* Navy-900 - Koyu lacivert */
+  --background-start-rgb: 249, 250, 251; /* Açık gri */
+  --background-end-rgb: 243, 244, 246; /* Beyaz-gri */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 17, 24, 39;
-    --background-end-rgb: 31, 41, 55;
+    /* Gece modu: Altın yazılar */
+    --foreground-rgb: 251, 191, 36; /* Gold-400 */
+    --background-start-rgb: 20, 26, 38; /* Navy-darkest */
+    --background-end-rgb: 37, 47, 71; /* Navy-darker */
   }
 }
 
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+      135deg,
+      rgb(var(--background-start-rgb)) 0%,
+      rgb(var(--background-end-rgb)) 100%
+    );
   min-height: 100vh;
 }
 
@@ -38,20 +39,75 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - Logo renklerine göre */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100 dark:bg-gray-900;
+  @apply bg-navy-darkest;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 dark:bg-gray-700 rounded-full;
+  @apply bg-gold-500/50 hover:bg-gold-500/70 rounded-full;
+  border: 2px solid rgb(20, 26, 38);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400 dark:bg-gray-600;
+  @apply bg-gold-500;
+}
+
+/* Print Styles - Sade Çıktı */
+@media print {
+  /* Sayfa arka planını beyaz yap */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Navigasyon ve gereksiz elementleri gizle */
+  nav,
+  header,
+  footer,
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Takvim yaprağını tam sayfa yap */
+  .print\:max-w-full {
+    max-width: 100% !important;
+  }
+
+  /* Gölgeleri ve gereksiz efektleri kaldır */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Sayfa kırılmalarını önle */
+  div, section, article {
+    page-break-inside: avoid;
+  }
+
+  /* Bağlantıları göster */
+  a[href]:after {
+    content: none !important;
+  }
+
+  /* Renkli arka planları kaldır */
+  .bg-gradient-to-r,
+  .bg-gradient-to-br,
+  .dark\:bg-gradient-to-r,
+  .dark\:bg-gradient-to-br {
+    background: white !important;
+  }
+
+  /* Sınırlı renk paleti */
+  .text-gold-400,
+  .text-gold-300,
+  .text-gold-500 {
+    color: #333 !important;
+  }
 }
