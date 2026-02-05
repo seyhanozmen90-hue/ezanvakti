@@ -218,6 +218,25 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   // Heading hazır mı?
   const isHeadingReady = heading !== null;
 
+  // Status text calculation (recalculates on tick for countdown)
+  const statusText = (() => {
+    if (error == null) return "";
+    if (locked) return `✅ Kıble bulundu (sapma: ${error.toFixed(1)}°)`;
+    if (error <= THRESHOLD_DEG && inRangeSinceRef.current !== null) {
+      const remaining = ((HOLD_MS - (Date.now() - inRangeSinceRef.current)) / 1000).toFixed(1);
+      return `Hedefte! Sabitlemek için ${remaining}s sabit tut`;
+    }
+    return `Sapma: ${error.toFixed(1)}°`;
+  })();
+
+  // Status badge color
+  const statusColor = useMemo(() => {
+    if (error == null) return "gray";
+    if (locked) return "green";
+    if (error <= THRESHOLD_DEG && inRangeSinceRef.current !== null) return "yellow";
+    return "gray";
+  }, [error, locked]);
+
   // Force re-render for countdown display
   const [, setTick] = useState(0);
   
@@ -277,22 +296,22 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
               Cihaz: {smoothHeading.toFixed(1)}° | Göreceli: {relativeAngle.toFixed(1)}°
             </p>
             
-            {locked ? (
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 border border-green-500 rounded-full">
-                <span className="text-green-700 dark:text-green-400 font-semibold">
-                  ✅ Kıble bulundu (sapma: {error.toFixed(1)}°)
-                </span>
-              </div>
-            ) : error <= THRESHOLD_DEG && inRangeSinceRef.current !== null ? (
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-500 rounded-full">
-                <span className="text-yellow-700 dark:text-yellow-400 font-semibold">
-                  Sabitlemek için {((HOLD_MS - (Date.now() - inRangeSinceRef.current)) / 1000).toFixed(1)}s
-                </span>
-              </div>
-            ) : (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full">
-                <span className="text-gray-700 dark:text-gray-300 text-sm">
-                  Sapma: {error.toFixed(1)}°
+            {statusText && (
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${
+                statusColor === "green"
+                  ? "bg-green-100 dark:bg-green-900/30 border border-green-500"
+                  : statusColor === "yellow"
+                  ? "bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-500"
+                  : "bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+              }`}>
+                <span className={`font-semibold ${
+                  statusColor === "green"
+                    ? "text-green-700 dark:text-green-400"
+                    : statusColor === "yellow"
+                    ? "text-yellow-700 dark:text-yellow-400"
+                    : "text-gray-700 dark:text-gray-300 text-sm"
+                }`}>
+                  {statusText}
                 </span>
               </div>
             )}
@@ -302,21 +321,15 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
 
       {/* Konum İzni Chip */}
       {!location ? (
-        <div className="max-w-[520px] mx-auto mb-6">
-          <div className="flex items-center justify-between gap-3 px-3 py-2.5 bg-blue-50 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-[14px] shadow-sm">
-            <span className="text-sm font-medium text-blue-900 dark:text-blue-300 flex items-center gap-2">
-              📍 Konum izni gerekli
-            </span>
-            <button
-              onClick={getLocation}
-              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
-            >
-              İzin ver
-            </button>
+        <div className="qiblaChip">
+          <div className="qiblaChipText">
+            <div className="qiblaChipTitle">📍 Konum izni gerekli</div>
+            <div className="qiblaChipSub">Kıble açısı için konum izni ver.</div>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-            Konumunuz kaydedilmez, sadece kıble hesaplaması için kullanılır
-          </p>
+
+          <button className="qiblaChipBtn" onClick={getLocation}>
+            İzin ver
+          </button>
         </div>
       ) : (
         <>
