@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useState, useMemo } from "react";
-import L from "leaflet";
+import * as L from "leaflet";
 
 // react-leaflet bileşenlerini dinamik olarak yükle
 const MapContainer = dynamic(

@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
+import 'leaflet-defaulticon-compatibility';
 
 // QiblaMap'i dinamik olarak yükle (SSR sorununu önlemek için)
 const QiblaMap = dynamic(() => import("@/components/QiblaMap"), { ssr: false });
@@ -197,7 +199,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     }, 16); // ~60fps
 
     return () => clearInterval(interval);
-  }, [heading]);
+  }, [heading, lerp]);
 
   // Calculate relative angle
   const relativeAngle = qiblaAngle !== null && smoothHeading !== null
@@ -304,13 +306,8 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
         {/* Pusula İç Halka */}
         <div className="absolute inset-4 rounded-full bg-white dark:bg-gray-900 shadow-inner" />
 
-        {/* Pusula Görseli (Cihaz heading kadar ters döner) */}
-        <div
-          className="absolute inset-8 transition-transform duration-200 ease-out"
-          style={{
-            transform: `rotate(${-smoothHeading}deg)`,
-          }}
-        >
+        {/* Pusula Görseli (SABİT - DÖNMEZ) */}
+        <div className="absolute inset-8">
           {/* SVG Pusula */}
           <svg viewBox="0 0 200 200" className="w-full h-full">
             {/* Yön İşaretleri */}
@@ -368,7 +365,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
         {/* Kıble Yönü İşareti (Göreceli Açıya Göre Döner) */}
         {qiblaAngle !== null && (
           <div
-            className={`absolute inset-0 transition-transform ${isAligned ? 'duration-100' : 'duration-200'} ease-out`}
+            className={`absolute inset-0 ${isAligned ? '' : 'transition-transform duration-200'} ease-out`}
             style={{
               transform: `rotate(${relativeAngle}deg)`,
             }}
@@ -460,16 +457,22 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
       
       {/* Hizalama Başarılı */}
       {location && qiblaAngle !== null && isAligned && (
-        <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-600 rounded-xl">
-          <p className="text-lg text-green-700 dark:text-green-400 text-center font-bold">
-            ✅ Kıble Yönü Bulundu!
-          </p>
-          <p className="text-sm text-green-600 dark:text-green-500 text-center mt-2">
-            🕋 Cihazınız şu an Kabe&apos;ye bakıyor. Namaz için hazırsınız.
-          </p>
+        <div className="mt-4 p-6 bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-600 rounded-xl shadow-lg">
+          <div className="text-center">
+            <div className="text-5xl mb-3 animate-bounce">✅</div>
+            <p className="text-xl text-green-700 dark:text-green-400 font-bold mb-2">
+              Kıble Bulundu!
+            </p>
+            <p className="text-base text-green-600 dark:text-green-500 font-semibold mb-1">
+              Sabit durabilirsiniz
+            </p>
+            <p className="text-sm text-green-600 dark:text-green-500 mt-2">
+              🕋 Cihazınız Kabe&apos;ye bakıyor. Namaz için hazırsınız.
+            </p>
+          </div>
           <button
             onClick={() => setIsAligned(false)}
-            className="mt-3 w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors"
+            className="mt-4 w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors"
           >
             Tekrar Hizala
           </button>
