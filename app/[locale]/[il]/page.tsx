@@ -334,7 +334,7 @@ export default async function CityPage({ params }: CityPageProps) {
               <div className="text-center mb-2.5">
                 <h2 className="text-xs sm:text-sm font-bold mb-1 flex items-center justify-center gap-1.5 text-navy-900 dark:text-gold-300">
                   <span className="text-base sm:text-lg">🕌</span>
-                  <span>{tPrayer('nextPrayer')}</span>
+                  <span>{tPrayer('nextPrayerWithCity', { city: city.name })}</span>
                 </h2>
                 <div className="text-lg sm:text-xl font-bold mb-1 drop-shadow-lg text-navy-900 dark:text-gold-400">
                   {nextPrayer.displayName}
@@ -355,7 +355,7 @@ export default async function CityPage({ params }: CityPageProps) {
           <div className="mb-6">
             <h2 className="text-base sm:text-lg font-bold text-navy-900 dark:bg-gradient-to-r dark:from-gold-400 dark:to-gold-600 dark:bg-clip-text dark:text-transparent mb-3 flex items-center gap-2">
               <span className="text-xl sm:text-2xl">📅</span>
-              <span className="text-navy-900 dark:text-transparent">{tPrayer('todaysPrayers')}</span>
+              <span className="text-navy-900 dark:text-transparent">{tPrayer('todaysPrayersWithCity', { city: city.name })}</span>
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
               {(['imsak', 'gunes', 'ogle', 'ikindi', 'aksam', 'yatsi'] as PrayerName[]).map((prayerName) => (
@@ -372,7 +372,7 @@ export default async function CityPage({ params }: CityPageProps) {
 
           {/* Monthly Table */}
           {monthlyTimes.length > 0 && (
-            <MonthlyTable times={monthlyTimes} locale={params.locale} />
+            <MonthlyTable times={monthlyTimes} locale={params.locale} cityName={city.name} />
           )}
 
           {/* Footer */}

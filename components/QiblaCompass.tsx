@@ -8,7 +8,7 @@ interface QiblaCompassProps {
 }
 
 export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
-  const [heading, setHeading] = useState<number>(0); // Cihaz yönü
+  const [heading, setHeading] = useState<number | null>(null); // Cihaz yönü (null = henüz algılanmadı)
   const [qiblaAngle, setQiblaAngle] = useState<number | null>(null); // Kıble açısı
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [permission, setPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
@@ -110,10 +110,11 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
       if (event.alpha !== null) {
         // alpha: 0-360 derece, kuzey = 0
         const alpha = event.alpha;
-        setHeading(360 - alpha); // Ters çevir (saat yönünün tersi)
-        console.log('Compass heading:', 360 - alpha); // Debug log
+        const calculatedHeading = 360 - alpha; // Ters çevir (saat yönünün tersi)
+        setHeading(calculatedHeading);
+        console.log('🧭 Compass heading:', calculatedHeading.toFixed(1), '° | Alpha:', alpha.toFixed(1));
       } else {
-        console.log('Alpha is null - compass not working');
+        console.log('⚠️ Alpha is null - compass not working');
       }
     };
 
@@ -148,8 +149,13 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLat, userLon]);
 
-  // Kıble yönü (pusula üzerinde)
-  const qiblaDirection = qiblaAngle !== null ? qiblaAngle - heading : 0;
+  // Kıble yönü (göreceli açı - normalize edilmiş)
+  const relativeAngle = qiblaAngle !== null && heading !== null
+    ? ((qiblaAngle - heading + 360) % 360)
+    : (qiblaAngle ?? 0);
+  
+  // Heading hazır mı? (Cihaz sensörü çalışıyor mu?)
+  const isHeadingReady = heading !== null && heading !== 0;
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -168,6 +174,11 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
             Kıble Açısı: {qiblaAngle.toFixed(1)}°
           </p>
         )}
+        {heading !== null && isHeadingReady && (
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Cihaz Yönü: {heading.toFixed(1)}° | Göreceli: {relativeAngle.toFixed(1)}°
+          </p>
+        )}
       </div>
 
       {/* Pusula */}
@@ -178,13 +189,8 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
         {/* Pusula İç Halka */}
         <div className="absolute inset-4 rounded-full bg-white dark:bg-gray-900 shadow-inner" />
 
-        {/* Pusula Görseli (Dönen) */}
-        <div
-          className="absolute inset-8 transition-transform duration-300 ease-out"
-          style={{
-            transform: `rotate(${-heading}deg)`,
-          }}
-        >
+        {/* Pusula Görseli (SABİT - Artık Dönmüyor) */}
+        <div className="absolute inset-8">
           {/* SVG Pusula */}
           <svg viewBox="0 0 200 200" className="w-full h-full">
             {/* Yön İşaretleri */}
@@ -239,16 +245,16 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
           </svg>
         </div>
 
-        {/* Kıble Yönü İşareti (Sabit) */}
+        {/* Kıble Yönü İşareti (Göreceli Açıya Göre Döner) */}
         {qiblaAngle !== null && (
           <div
-            className="absolute inset-0 transition-transform duration-500"
+            className="absolute inset-0 transition-transform duration-300 ease-out"
             style={{
-              transform: `rotate(${qiblaDirection}deg)`,
+              transform: `rotate(${relativeAngle}deg)`,
             }}
           >
             <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2">
-              <div className="text-4xl drop-shadow-lg animate-bounce">
+              <div className="text-4xl drop-shadow-lg">
                 🕋
               </div>
             </div>
@@ -309,14 +315,29 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
         </div>
       )}
 
-      {/* Başarı Mesajı */}
-      {location && qiblaAngle !== null && (
+      {/* Pusula Sensörü Uyarısı */}
+      {location && qiblaAngle !== null && !isHeadingReady && compassSupported && (
+        <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
+          <p className="text-sm text-yellow-700 dark:text-yellow-400 text-center font-semibold">
+            ⚠️ Pusula için hareket sensörü/konum izni gerekli
+          </p>
+          <p className="text-xs text-yellow-600 dark:text-yellow-500 text-center mt-1">
+            Cihazınızı hareket ettirin veya pusula iznini etkinleştirin. Şu an sadece Kıble açısı gösteriliyor.
+          </p>
+        </div>
+      )}
+
+      {/* Başarı Mesajı - Sadece Heading Hazırsa */}
+      {location && qiblaAngle !== null && isHeadingReady && (
         <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
           <p className="text-sm text-green-700 dark:text-green-400 text-center font-semibold">
             ✅ Kıble yönü hesaplandı!
           </p>
           <p className="text-xs text-green-600 dark:text-green-500 text-center mt-1">
-            🕋 Kabe işareti Kıble yönünü gösteriyor. Cihazınızı döndürün.
+            🕋 Kabe işareti Kıble yönünü gösteriyor. Cihazınızı döndürün ve 🕋 yukarı geldiğinde durun.
+          </p>
+          <p className="text-xs text-green-600 dark:text-green-500 text-center mt-1">
+            📐 Göreceli Açı: {relativeAngle.toFixed(1)}° (Kıble: {qiblaAngle.toFixed(1)}° - Cihaz: {heading.toFixed(1)}°)
           </p>
         </div>
       )}

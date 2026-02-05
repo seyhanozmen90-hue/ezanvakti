@@ -13,8 +13,11 @@
   "prayer": {
     "times": "Namaz Vakitleri",
     "nextPrayer": "Bir Sonraki Vakit",
+    "nextPrayerWithCity": "Bir Sonraki Vakit — {city}",
     "todaysPrayers": "Bugünün Namaz Vakitleri",
+    "todaysPrayersWithCity": "Bugünün Namaz Vakitleri — {city}",
     "monthlyTimes": "Aylık Namaz Vakitleri",
+    "monthlyTimesWithCity": "Aylık {city} Namaz Vakitleri",
     "remainingTime": "{prayer} vaktine kalan süre",
     "prayerEntered": "Vakit girdi"
   },
@@ -75,6 +78,7 @@
   },
   "calendar": {
     "monthly": "Aylık Namaz Vakitleri",
+    "monthlyWithCity": "Aylık {city} Namaz Vakitleri",
     "date": "Tarih"
   },
   "table": {

@@ -326,7 +326,7 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
               <div className="text-center mb-3 sm:mb-4">
                 <h2 className="text-base sm:text-lg md:text-xl font-bold mb-1 sm:mb-2 flex items-center justify-center gap-2 text-navy-900 dark:text-gold-300">
                   <span className="text-xl sm:text-2xl">🕌</span>
-                  <span>{tPrayer('nextPrayer')}</span>
+                  <span>{tPrayer('nextPrayerWithCity', { city: `${city.name} / ${district.name}` })}</span>
                 </h2>
                 <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2 drop-shadow-lg text-navy-900 dark:text-gold-400">
                   {nextPrayer.displayName}
@@ -347,7 +347,7 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
           <div className="mb-8 sm:mb-10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-navy-900 dark:bg-gradient-to-r dark:from-gold-400 dark:to-gold-600 dark:bg-clip-text dark:text-transparent mb-5 sm:mb-6 flex items-center gap-2 sm:gap-3">
               <span className="text-2xl sm:text-3xl md:text-4xl">📅</span>
-              <span className="text-navy-900 dark:text-transparent">{tPrayer('todaysPrayers')}</span>
+              <span className="text-navy-900 dark:text-transparent">{tPrayer('todaysPrayersWithCity', { city: `${city.name} / ${district.name}` })}</span>
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
               {(['imsak', 'gunes', 'ogle', 'ikindi', 'aksam', 'yatsi'] as PrayerName[]).map((prayerName) => (
@@ -364,7 +364,7 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
 
           {/* Monthly Table */}
           {monthlyTimes.length > 0 && (
-            <MonthlyTable times={monthlyTimes} locale={params.locale} />
+            <MonthlyTable times={monthlyTimes} locale={params.locale} cityName={`${city.name} / ${district.name}`} />
           )}
 
           {/* Footer */}

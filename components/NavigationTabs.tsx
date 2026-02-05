@@ -103,15 +103,15 @@ export default function NavigationTabs() {
 
   return (
     <nav className="bg-gradient-to-r from-navy-darkest via-navy-darker to-navy-dark dark:from-navy-darkest dark:via-navy-darkest dark:to-navy-darker shadow-2xl sticky top-0 z-50 backdrop-blur-lg border-b border-gold-500/30">
-      <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
+      <div className="container mx-auto px-3 md:px-4 max-w-6xl">
         {/* Ana Navigation */}
-        <div className="flex items-center justify-between py-2.5 gap-2">
-          {/* Logo - Kompakt */}
-          <Link href="/" className="flex items-center gap-2 min-w-0 shrink-0 group">
-            <div className="relative h-8 sm:h-10 w-auto">
+        <div className="flex items-center justify-between py-1 md:py-1.5 gap-2 md:gap-3">
+          {/* Logo - BÜYÜK */}
+          <Link href="/" className="flex items-center gap-2 md:gap-3 min-w-0 shrink-0 group">
+            <div className="relative h-28 md:h-32 w-auto overflow-visible">
               <Image 
                 src="/ezan-vakti-logo.svg?v=6" 
-                alt="Ezan Vakti Logo" 
+                alt="Ezan Vakti - Türkiye Namaz Vakitleri" 
                 width={440}
                 height={188}
                 className="h-full w-auto object-contain group-hover:scale-105 transition-transform"
@@ -120,8 +120,8 @@ export default function NavigationTabs() {
                 key="ezan-vakti-logo-v6-scaled"
               />
             </div>
-            <div className="hidden lg:flex items-center border-l-2 border-gold-500/40 pl-2">
-              <div className="text-gold-400/90 text-xs tracking-wide uppercase font-bold whitespace-nowrap">
+            <div className="hidden lg:flex items-center border-l-2 border-gold-500/40 pl-3">
+              <div className="text-gold-400/90 text-xs md:text-sm tracking-wide uppercase font-bold whitespace-nowrap">
                 Türkiye Namaz Saatleri
               </div>
             </div>
@@ -158,8 +158,9 @@ export default function NavigationTabs() {
             <ThemeToggle />
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 rounded-lg bg-navy-darkest/60 border border-gold-500/30 text-gold-400 hover:text-gold-300 hover:bg-navy-dark/60 transition-all"
-              aria-label="Menü"
+              className="p-2 rounded-lg bg-navy-darkest/60 border border-gold-500/30 text-gold-400 hover:text-gold-300 hover:bg-navy-dark/60 transition-all h-9 w-9 flex items-center justify-center"
+              aria-label="Menü Aç/Kapat"
+              aria-expanded={isMobileMenuOpen}
             >
               {isMobileMenuOpen ? (
                 <X className="w-5 h-5 stroke-[2.5]" />

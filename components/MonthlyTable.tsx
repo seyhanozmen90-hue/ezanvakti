@@ -9,9 +9,10 @@ import { getCalendarDay } from '@/data/calendar-2026-official';
 interface MonthlyTableProps {
   times: PrayerTime[];
   locale: string;
+  cityName?: string;
 }
 
-export default function MonthlyTable({ times, locale }: MonthlyTableProps) {
+export default function MonthlyTable({ times, locale, cityName }: MonthlyTableProps) {
   const t = useTranslations('calendar');
   const tPrayers = useTranslations('prayers');
   const [isOpen, setIsOpen] = useState(false);
@@ -25,7 +26,7 @@ export default function MonthlyTable({ times, locale }: MonthlyTableProps) {
         <div className="flex items-center gap-2">
           <span className="text-xl">📅</span>
           <span className="text-base font-bold text-navy-900 dark:text-gold-400">
-            {t('monthly')}
+            {cityName ? t('monthlyWithCity', { city: cityName }) : t('monthly')}
           </span>
         </div>
         <svg
