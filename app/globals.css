@@ -41,28 +41,197 @@ body {
 }
 
 /* Qibla Components */
+.qiblaModeToggle { 
+  margin-bottom: 12px; 
+}
+
+.compassRing {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  background: linear-gradient(to bottom right, #f3f4f6, #e5e7eb);
+  transition: background-color 0.3s ease;
+}
+
+.compassRing.isInRange {
+  background: linear-gradient(to bottom right, #fef3c7, #fde68a);
+  outline: 2px solid rgba(34, 197, 94, 0.6);
+}
+
+.compassRing.isLocked {
+  background: linear-gradient(to bottom right, #dcfce7, #bbf7d0);
+  outline: 3px solid rgba(34, 197, 94, 0.95);
+}
+
+.compassInner {
+  position: absolute;
+  inset: 16px;
+  border-radius: 9999px;
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+  background: white;
+  transition: background-color 0.3s ease;
+}
+
+.compassInner.isInRange {
+  background: #fffbeb;
+}
+
+.compassInner.isLocked {
+  background: #f0fdf4;
+}
+
+@media (prefers-color-scheme: dark) {
+  .compassRing {
+    background: linear-gradient(to bottom right, #374151, #1f2937);
+  }
+
+  .compassRing.isInRange {
+    background: linear-gradient(to bottom right, #713f12, #854d0e);
+  }
+
+  .compassRing.isLocked {
+    background: linear-gradient(to bottom right, #14532d, #15803d);
+  }
+
+  .compassInner {
+    background: #111827;
+  }
+
+  .compassInner.isInRange {
+    background: #422006;
+  }
+
+  .compassInner.isLocked {
+    background: #052e16;
+  }
+}
+
 .qiblaChip {
-  @apply max-w-[520px] mx-auto mb-6 flex items-center justify-between gap-3 px-3 py-2.5 bg-blue-50 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-[14px] shadow-sm;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 520px;
+  margin: 12px auto;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.9);
 }
 
-.qiblaChipText {
-  @apply flex-1;
+@media (prefers-color-scheme: dark) {
+  .qiblaChip {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(30, 41, 59, 0.5);
+  }
+
+  .qiblaChipBtn {
+    border-color: rgba(59, 130, 246, 0.5);
+  }
+
+  .qiblaUnlockBtn {
+    border-color: rgba(34, 197, 94, 0.5);
+  }
 }
 
-.qiblaChipTitle {
-  @apply text-sm font-medium text-blue-900 dark:text-blue-300;
+.qiblaChipTitle { 
+  font-size: 14px; 
+  font-weight: 600; 
+  line-height: 1.2; 
 }
 
-.qiblaChipSub {
-  @apply text-xs text-gray-500 dark:text-gray-400 mt-0.5;
+.qiblaChipSub { 
+  font-size: 12px; 
+  opacity: 0.75; 
+  line-height: 1.2; 
+  margin-top: 2px; 
 }
 
 .qiblaChipBtn {
-  @apply px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #3b82f6;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.qiblaChipBtn:hover {
+  background: #2563eb;
+}
+
+.qiblaBadge {
+  max-width: 520px;
+  margin: 10px auto 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.qiblaBadge--gray {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(229, 231, 235, 0.9);
+  color: #374151;
+}
+
+.qiblaBadge--yellow {
+  border: 1px solid rgba(234, 179, 8, 0.5);
+  background: rgba(254, 249, 195, 0.9);
+  color: #ca8a04;
+}
+
+.qiblaBadge--green {
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  background: rgba(220, 252, 231, 0.9);
+  color: #15803d;
+}
+
+@media (prefers-color-scheme: dark) {
+  .qiblaBadge--gray {
+    border-color: rgba(75, 85, 99, 0.5);
+    background: rgba(31, 41, 55, 0.5);
+    color: #d1d5db;
+  }
+
+  .qiblaBadge--yellow {
+    border-color: rgba(234, 179, 8, 0.3);
+    background: rgba(113, 63, 18, 0.3);
+    color: #fde047;
+  }
+
+  .qiblaBadge--green {
+    border-color: rgba(34, 197, 94, 0.3);
+    background: rgba(20, 83, 45, 0.3);
+    color: #86efac;
+  }
 }
 
 .qiblaUnlockBtn {
-  @apply mt-4 w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors;
+  display: block;
+  margin: 10px auto 0;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #22c55e;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.qiblaUnlockBtn:hover {
+  background: #16a34a;
+}
+
+.qiblaCompassWrap {
+  margin-top: 12px;
 }
 
 /* Smooth scrolling */

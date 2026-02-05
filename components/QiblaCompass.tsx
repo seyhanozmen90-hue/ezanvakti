@@ -271,6 +271,9 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     }
   }, [error, locked]);
 
+  // Check if in range
+  const isInRange = error != null && error <= THRESHOLD_DEG;
+
   return (
     <div className="w-full max-w-md mx-auto">
       {/* Başlık */}
@@ -297,22 +300,8 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
             </p>
             
             {statusText && (
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${
-                statusColor === "green"
-                  ? "bg-green-100 dark:bg-green-900/30 border border-green-500"
-                  : statusColor === "yellow"
-                  ? "bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-500"
-                  : "bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
-              }`}>
-                <span className={`font-semibold ${
-                  statusColor === "green"
-                    ? "text-green-700 dark:text-green-400"
-                    : statusColor === "yellow"
-                    ? "text-yellow-700 dark:text-yellow-400"
-                    : "text-gray-700 dark:text-gray-300 text-sm"
-                }`}>
-                  {statusText}
-                </span>
+              <div className={`qiblaBadge qiblaBadge--${statusColor}`}>
+                {statusText}
               </div>
             )}
           </div>
@@ -334,7 +323,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
       ) : (
         <>
           {/* Görünüm Değiştirici */}
-          <div className="mx-auto mt-4 flex w-full max-w-md overflow-hidden rounded-2xl bg-slate-900/90 p-1">
+          <div className="qiblaModeToggle">
             <button
               onClick={() => setView("pusula")}
               className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold ${
@@ -355,22 +344,14 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
 
           {/* Koşullu Görünüm */}
           {view === "pusula" ? (
-      <div className="mt-3">
+      <div className="qiblaCompassWrap">
       {/* Pusula */}
       <div className="relative w-full aspect-square mb-8">
         {/* Pusula Dış Halka - Locked durumunda yeşil */}
-        <div className={`absolute inset-0 rounded-full shadow-2xl transition-colors duration-300 ${
-          locked 
-            ? 'bg-gradient-to-br from-green-100 to-green-200 dark:from-green-800 dark:to-green-900'
-            : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800'
-        }`} />
+        <div className={`compassRing ${locked ? "isLocked" : isInRange ? "isInRange" : ""}`} />
         
         {/* Pusula İç Halka */}
-        <div className={`absolute inset-4 rounded-full shadow-inner transition-colors duration-300 ${
-          locked
-            ? 'bg-green-50 dark:bg-green-950'
-            : 'bg-white dark:bg-gray-900'
-        }`} />
+        <div className={`compassInner ${locked ? "isLocked" : isInRange ? "isInRange" : ""}`} />
 
         {/* Pusula Görseli (SABİT - DÖNMEZ) */}
         <div className="absolute inset-8">
