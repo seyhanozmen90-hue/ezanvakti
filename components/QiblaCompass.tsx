@@ -205,6 +205,19 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     return () => clearInterval(interval);
   }, [heading, lerp]);
 
+  // Yön değiştiğinde kilidi otomatik aç
+  useEffect(() => {
+    if (!locked || heading === null) return;
+    
+    const headingDiff = Math.abs(normalizeAngle(heading - lastHeadingRef.current));
+    
+    // Eğer yön 10 dereceden fazla değiştiyse kilidi aç
+    if (headingDiff > 10) {
+      setLocked(false);
+      inRangeSinceRef.current = null;
+    }
+  }, [heading, locked]);
+
   // Calculate relative angle and error
   const relativeAngle = qiblaAngle !== null && smoothHeading !== null
     ? ((qiblaAngle - smoothHeading + 360) % 360)
@@ -353,14 +366,18 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
         {/* Pusula İç Halka */}
         <div className={`compassInner ${locked ? "isLocked" : isInRange ? "isInRange" : ""}`} />
 
-        {/* Pusula Görseli (SABİT - DÖNMEZ) */}
-        <div className="absolute inset-8">
+        {/* Pusula Görseli (Cihaz yönüne göre DÖNER) */}
+        <div 
+          className={`absolute inset-8 ${locked ? '' : 'transition-transform duration-200'} ease-out`}
+          style={{
+            transform: `rotate(${-smoothHeading}deg)`,
+          }}
+        >
           {/* SVG Pusula */}
           <svg viewBox="0 0 200 200" className="w-full h-full">
             {/* Yön İşaretleri */}
             <g className="text-gray-700 dark:text-gray-300">
-              {/* Kuzey (N) */}
-              <text x="100" y="20" textAnchor="middle" className="text-[18px] font-black fill-red-600">N</text>
+              {/* Kuzey (N) - Artık Kabe emoji burada olacak, N yok */}
               {/* Doğu (E) */}
               <text x="180" y="105" textAnchor="middle" className="text-[14px] font-bold fill-current">E</text>
               {/* Güney (S) */}
@@ -409,20 +426,13 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
           </svg>
         </div>
 
-        {/* Kıble Yönü İşareti (Göreceli Açıya Göre Döner) */}
+        {/* Kıble Yönü İşareti (SABİT ÜST KONUMDA - Kuzey/N yerine) */}
         {qiblaAngle !== null && (
-          <div
-            className={`absolute inset-0 ${locked ? '' : 'transition-transform duration-200'} ease-out`}
-            style={{
-              transform: `rotate(${relativeAngle}deg)`,
-            }}
-          >
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2">
-              <div className={`drop-shadow-lg transition-all duration-300 ${
-                locked ? 'text-5xl scale-125' : 'text-4xl'
-              }`}>
-                🕋
-              </div>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 inset-x-0 flex justify-center">
+            <div className={`drop-shadow-lg transition-all duration-300 ${
+              locked ? 'text-5xl scale-125' : 'text-4xl'
+            }`}>
+              🕋
             </div>
           </div>
         )}
@@ -503,20 +513,6 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
             </p>
           </div>
         </div>
-      )}
-
-      {/* Kilidi Kaldır Butonu */}
-      {locked && (
-        <button
-          type="button"
-          onClick={() => {
-            setLocked(false);
-            inRangeSinceRef.current = null;
-          }}
-          className="qiblaUnlockBtn"
-        >
-          Kilidi kaldır
-        </button>
       )}
 
       {/* Pusula Desteği Yok */}
