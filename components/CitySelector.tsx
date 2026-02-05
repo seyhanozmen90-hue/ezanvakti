@@ -110,13 +110,13 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
       {/* İl Dropdown */}
-      <div className="relative min-w-[160px] sm:min-w-[200px]">
+      <div className="relative w-full sm:w-auto sm:min-w-[180px]">
         <select
           value={selectedCitySlug}
           onChange={handleCityChange}
-          className="w-full appearance-none px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 pr-10 sm:pr-12 bg-navy-darkest/70 backdrop-blur-sm rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl transition-all border border-gold-500/30 hover:border-gold-500/50 text-gold-300 dark:text-gold-300 text-sm sm:text-base font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-gold-500"
+          className="w-full appearance-none px-3 py-2 pr-9 bg-navy-darkest/70 backdrop-blur-sm rounded-lg shadow-md hover:shadow-lg transition-all border border-gold-500/30 hover:border-gold-500/50 text-gold-300 dark:text-gold-300 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-1 focus:ring-gold-500"
         >
           <option value="" className="bg-navy-darkest text-gold-300">{t('selectCity')}</option>
           {sortedCities.map((city) => (
@@ -125,20 +125,20 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
             </option>
           ))}
         </select>
-        <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gold-300 dark:text-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+          <svg className="w-4 h-4 text-gold-300 dark:text-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
       </div>
 
       {/* İlçe Dropdown */}
-      <div className="relative min-w-[160px] sm:min-w-[200px]">
+      <div className="relative w-full sm:w-auto sm:min-w-[180px]">
         <select
           value={selectedDistrictSlug}
           onChange={handleDistrictChange}
           disabled={!selectedCitySlug || availableDistricts.length === 0}
-          className="w-full appearance-none px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 pr-10 sm:pr-12 bg-navy-darkest/70 backdrop-blur-sm rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl transition-all border border-gold-500/30 hover:border-gold-500/50 text-gold-300 dark:text-gold-300 text-sm sm:text-base font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full appearance-none px-3 py-2 pr-9 bg-navy-darkest/70 backdrop-blur-sm rounded-lg shadow-md hover:shadow-lg transition-all border border-gold-500/30 hover:border-gold-500/50 text-gold-300 dark:text-gold-300 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-1 focus:ring-gold-500 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <option value="" className="bg-navy-darkest text-gold-300">{t('selectDistrict')}</option>
           {availableDistricts.map((district) => (
@@ -147,8 +147,8 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
             </option>
           ))}
         </select>
-        <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gold-300 dark:text-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+          <svg className="w-4 h-4 text-gold-300 dark:text-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>

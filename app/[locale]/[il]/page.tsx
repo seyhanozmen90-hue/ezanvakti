@@ -284,26 +284,26 @@ export default async function CityPage({ params }: CityPageProps) {
     <>
       <JsonLd data={jsonLd} />
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-navy-darkest dark:via-navy-darker dark:to-navy-dark">
-        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-10 max-w-7xl">
+        <div className="container mx-auto px-4 sm:px-6 py-6 max-w-6xl">
           {/* SEO H1 + Location & Date */}
-          <header className="mb-6 sm:mb-8">
+          <header className="mb-5">
             {/* SEO H1 - Görünür başlık */}
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-navy-900 dark:text-white mb-3 text-center">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold leading-tight text-navy-900 dark:text-white mb-2 text-center">
               {city.name} Namaz Vakitleri – {formatDate(currentDate)}
             </h1>
-            <p className="text-center text-navy-700 dark:text-gold-300/80 text-sm sm:text-base mb-6">
+            <p className="text-center text-navy-700 dark:text-gold-300/80 text-xs sm:text-sm mb-4">
               Diyanet İşleri Başkanlığı verilerine göre güncel ve doğru namaz saatleri
             </p>
 
             {/* Location & Date Card */}
-            <div className="bg-white dark:bg-gradient-to-br dark:from-navy-dark/90 dark:to-navy-darker/90 backdrop-blur-md rounded-2xl shadow-xl dark:shadow-2xl p-5 sm:p-6 md:p-8 border-2 border-gold-500 dark:border-gold-500/30">
-              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 sm:gap-6">
+            <div className="bg-white dark:bg-gradient-to-br dark:from-navy-dark/90 dark:to-navy-darker/90 backdrop-blur-md rounded-xl shadow-lg dark:shadow-xl p-4 sm:p-5 border border-gold-500 dark:border-gold-500/30">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 sm:gap-4">
                 {/* Sol: Konum & Tarih Bilgisi */}
-                <div>
-                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-navy-900 dark:bg-gradient-to-r dark:from-gold-400 dark:to-gold-600 dark:bg-clip-text dark:text-transparent mb-2 sm:mb-3 flex items-center gap-2">
+                <div className="min-w-0">
+                  <div className="text-lg sm:text-xl font-bold text-navy-900 dark:bg-gradient-to-r dark:from-gold-400 dark:to-gold-600 dark:bg-clip-text dark:text-transparent mb-1.5 flex items-center gap-2">
                     📍 {city.name}
                   </div>
-                  <p className="text-navy-900 dark:text-gold-300/80 text-sm sm:text-base md:text-lg font-semibold">
+                  <p className="text-navy-900 dark:text-gold-300/80 text-xs sm:text-sm font-semibold">
                     {formatDate(currentDate)}
                   </p>
                   {todayTimes.hijriDate && (
@@ -330,16 +330,16 @@ export default async function CityPage({ params }: CityPageProps) {
 
           {/* Next Prayer Countdown - BIG CARD */}
           {nextPrayer && (
-            <div className="mb-6 sm:mb-8 bg-white dark:bg-gradient-to-br dark:from-navy-dark/90 dark:to-navy-darker/90 backdrop-blur-md rounded-2xl shadow-xl dark:shadow-2xl p-5 sm:p-6 md:p-8 text-navy-900 dark:text-gold-300 border-2 border-gold-500 dark:border-gold-500/30">
-              <div className="text-center mb-3 sm:mb-4">
-                <h2 className="text-base sm:text-lg md:text-xl font-bold mb-1 sm:mb-2 flex items-center justify-center gap-2 text-navy-900 dark:text-gold-300">
-                  <span className="text-xl sm:text-2xl">🕌</span>
+            <div className="mb-5 bg-white dark:bg-gradient-to-br dark:from-navy-dark/90 dark:to-navy-darker/90 backdrop-blur-md rounded-xl shadow-lg dark:shadow-xl p-4 sm:p-5 text-navy-900 dark:text-gold-300 border border-gold-500 dark:border-gold-500/30">
+              <div className="text-center mb-2.5">
+                <h2 className="text-xs sm:text-sm font-bold mb-1 flex items-center justify-center gap-1.5 text-navy-900 dark:text-gold-300">
+                  <span className="text-base sm:text-lg">🕌</span>
                   <span>{tPrayer('nextPrayer')}</span>
                 </h2>
-                <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2 drop-shadow-lg text-navy-900 dark:text-gold-400">
+                <div className="text-lg sm:text-xl font-bold mb-1 drop-shadow-lg text-navy-900 dark:text-gold-400">
                   {nextPrayer.displayName}
                 </div>
-                <div className="text-xl sm:text-2xl md:text-3xl font-mono font-bold bg-navy-100 dark:bg-navy-darkest/40 py-1.5 sm:py-2 px-3 sm:px-4 rounded-lg inline-block border-2 border-gold-500 dark:border-gold-500/20 text-navy-900 dark:text-gold-400">
+                <div className="text-base sm:text-lg font-mono font-bold bg-navy-100 dark:bg-navy-darkest/40 py-1 px-2.5 rounded-lg inline-block border border-gold-500 dark:border-gold-500/20 text-navy-900 dark:text-gold-400">
                   {nextPrayer.time}
                 </div>
               </div>
@@ -352,9 +352,9 @@ export default async function CityPage({ params }: CityPageProps) {
           )}
 
           {/* Today's Prayer Times */}
-          <div className="mb-8 sm:mb-10">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-navy-900 dark:bg-gradient-to-r dark:from-gold-400 dark:to-gold-600 dark:bg-clip-text dark:text-transparent mb-5 sm:mb-6 flex items-center gap-2 sm:gap-3">
-              <span className="text-2xl sm:text-3xl md:text-4xl">📅</span>
+          <div className="mb-6">
+            <h2 className="text-base sm:text-lg font-bold text-navy-900 dark:bg-gradient-to-r dark:from-gold-400 dark:to-gold-600 dark:bg-clip-text dark:text-transparent mb-3 flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">📅</span>
               <span className="text-navy-900 dark:text-transparent">{tPrayer('todaysPrayers')}</span>
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
@@ -376,7 +376,7 @@ export default async function CityPage({ params }: CityPageProps) {
           )}
 
           {/* Footer */}
-          <footer className="mt-10 sm:mt-12 md:mt-16 text-center text-xs sm:text-sm text-navy-900 dark:text-gold-400/70 bg-white dark:bg-navy-darkest/60 backdrop-blur-md rounded-2xl p-5 sm:p-6 md:p-8 border-2 border-gold-500 dark:border-gold-500/20 shadow-lg dark:shadow-none">
+          <footer className="mt-8 text-center text-xs sm:text-sm text-navy-900 dark:text-gold-400/70 bg-white dark:bg-navy-darkest/60 backdrop-blur-md rounded-xl p-4 sm:p-5 border border-gold-500 dark:border-gold-500/20 shadow-lg dark:shadow-none">
             <p className="mb-2 font-semibold">
               {tFooter('dataSource')}{' '}
               <a

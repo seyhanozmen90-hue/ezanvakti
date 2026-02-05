@@ -17,14 +17,14 @@ export default function MonthlyTable({ times, locale }: MonthlyTableProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="w-full mt-8 bg-white dark:bg-gradient-to-br dark:from-navy-dark/60 dark:to-navy-darker/60 backdrop-blur-sm rounded-2xl shadow-xl dark:shadow-2xl overflow-hidden border-2 border-gold-500 dark:border-gold-500/20">
+    <div className="w-full mt-6 bg-white dark:bg-gradient-to-br dark:from-navy-dark/60 dark:to-navy-darker/60 backdrop-blur-sm rounded-xl shadow-lg dark:shadow-xl overflow-hidden border border-gold-500 dark:border-gold-500/20">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 flex justify-between items-center text-left hover:bg-gray-100 dark:hover:bg-gold-500/10 transition-all"
+        className="w-full px-4 py-2.5 flex justify-between items-center text-left hover:bg-gray-100 dark:hover:bg-gold-500/10 transition-all"
       >
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">📅</span>
-          <span className="text-lg font-bold text-navy-900 dark:text-gold-400">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">📅</span>
+          <span className="text-base font-bold text-navy-900 dark:text-gold-400">
             {t('monthly')}
           </span>
         </div>
