@@ -223,39 +223,34 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   
   // Alignment detection with locking
   useEffect(() => {
-    if (!isHeadingReady || qiblaAngle === null || error === null) return;
+    if (locked) return;
+    if (error == null) return;
 
     if (error <= THRESHOLD_DEG) {
-      if (inRangeSinceRef.current === null) {
-        inRangeSinceRef.current = Date.now();
-      } else if (!locked) {
-        const elapsed = Date.now() - inRangeSinceRef.current;
-        if (elapsed >= HOLD_MS) {
-          setLocked(true);
-          // Vibration feedback
-          if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate(30);
-          }
+      if (!inRangeSinceRef.current) inRangeSinceRef.current = Date.now();
+      const held = Date.now() - inRangeSinceRef.current;
+
+      if (held >= HOLD_MS) {
+        setLocked(true);
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          // @ts-ignore
+          navigator.vibrate?.(30);
         }
       }
     } else {
       inRangeSinceRef.current = null;
-      if (locked && error > THRESHOLD_DEG * 2) {
-        // Auto-unlock if deviated too much
-        setLocked(false);
-      }
     }
-  }, [error, locked, isHeadingReady, qiblaAngle]);
+  }, [error, locked]);
 
   // Update UI every 100ms for countdown
   useEffect(() => {
-    if (inRangeSinceRef.current !== null && !locked) {
+    if (error !== null && error <= THRESHOLD_DEG && !locked) {
       const interval = setInterval(() => {
         setTick(t => t + 1);
       }, 100);
       return () => clearInterval(interval);
     }
-  }, [locked, error]);
+  }, [error, locked]);
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -513,16 +508,21 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
               🕋 Cihazınız Kabe&apos;ye bakıyor. Namaz için hazırsınız.
             </p>
           </div>
-          <button
-            onClick={() => {
-              setLocked(false);
-              inRangeSinceRef.current = null;
-            }}
-            className="mt-4 w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors"
-          >
-            Kilidi Kaldır
-          </button>
         </div>
+      )}
+
+      {/* Kilidi Kaldır Butonu */}
+      {locked && (
+        <button
+          type="button"
+          onClick={() => {
+            setLocked(false);
+            inRangeSinceRef.current = null;
+          }}
+          className="qiblaUnlockBtn"
+        >
+          Kilidi kaldır
+        </button>
       )}
 
       {/* Pusula Desteği Yok */}
