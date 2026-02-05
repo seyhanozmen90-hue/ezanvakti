@@ -26,16 +26,16 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   const [needsPermission, setNeedsPermission] = useState<boolean>(false);
   const [selectedCity, setSelectedCity] = useState<string>('');
   const [locked, setLocked] = useState<boolean>(false);
-  const [inRangeSince, setInRangeSince] = useState<number | null>(null);
   
+  const inRangeSinceRef = useRef<number | null>(null);
   const alignmentTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastHeadingRef = useRef<number>(0);
 
   // Kabe koordinatları (Mekke)
   const KAABA_LAT = 21.4225;
   const KAABA_LON = 39.8262;
-  const ALIGNMENT_THRESHOLD = 5; // degrees
-  const ALIGNMENT_DURATION = 1200; // ms
+  const THRESHOLD_DEG = 5; // degrees
+  const HOLD_MS = 1200; // ms
 
   // Başlıca şehir koordinatları (Fallback için)
   const cityCoordinates: Record<string, { lat: number; lon: number; qibla: number }> = {
@@ -52,11 +52,8 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   };
 
   // Normalize angle to -180..180 range
-  const normalizeAngle = (angle: number): number => {
-    let normalized = angle % 360;
-    if (normalized > 180) normalized -= 360;
-    if (normalized < -180) normalized += 360;
-    return normalized;
+  const normalizeAngle = (a: number): number => {
+    return ((a + 540) % 360) - 180;
   };
 
   // Shortest angle difference (for alignment check)
@@ -127,7 +124,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
 
     setErrorMessage('');
     setLocked(false);
-    setInRangeSince(null);
+    inRangeSinceRef.current = null;
     
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -220,16 +217,19 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   // Heading hazır mı?
   const isHeadingReady = heading !== null;
 
+  // Force re-render for countdown display
+  const [, setTick] = useState(0);
+  
   // Alignment detection with locking
   useEffect(() => {
     if (!isHeadingReady || qiblaAngle === null || error === null) return;
 
-    if (error <= ALIGNMENT_THRESHOLD) {
-      if (inRangeSince === null) {
-        setInRangeSince(Date.now());
+    if (error <= THRESHOLD_DEG) {
+      if (inRangeSinceRef.current === null) {
+        inRangeSinceRef.current = Date.now();
       } else if (!locked) {
-        const elapsed = Date.now() - inRangeSince;
-        if (elapsed >= ALIGNMENT_DURATION) {
+        const elapsed = Date.now() - inRangeSinceRef.current;
+        if (elapsed >= HOLD_MS) {
           setLocked(true);
           // Vibration feedback
           if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -238,13 +238,23 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
         }
       }
     } else {
-      setInRangeSince(null);
-      if (locked && error > ALIGNMENT_THRESHOLD * 2) {
+      inRangeSinceRef.current = null;
+      if (locked && error > THRESHOLD_DEG * 2) {
         // Auto-unlock if deviated too much
         setLocked(false);
       }
     }
-  }, [error, inRangeSince, locked, isHeadingReady, qiblaAngle]);
+  }, [error, locked, isHeadingReady, qiblaAngle]);
+
+  // Update UI every 100ms for countdown
+  useEffect(() => {
+    if (inRangeSinceRef.current !== null && !locked) {
+      const interval = setInterval(() => {
+        setTick(t => t + 1);
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, [locked, error]);
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -277,10 +287,10 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
                   ✅ Kıble bulundu (sapma: {error.toFixed(1)}°)
                 </span>
               </div>
-            ) : error <= ALIGNMENT_THRESHOLD && inRangeSince !== null ? (
+            ) : error <= THRESHOLD_DEG && inRangeSinceRef.current !== null ? (
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-500 rounded-full">
                 <span className="text-yellow-700 dark:text-yellow-400 font-semibold">
-                  Sabitlemek için {((ALIGNMENT_DURATION - (Date.now() - inRangeSince)) / 1000).toFixed(1)}s
+                  Sabitlemek için {((HOLD_MS - (Date.now() - inRangeSinceRef.current)) / 1000).toFixed(1)}s
                 </span>
               </div>
             ) : (
@@ -505,7 +515,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
           <button
             onClick={() => {
               setLocked(false);
-              setInRangeSince(null);
+              inRangeSinceRef.current = null;
             }}
             className="mt-4 w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors"
           >
