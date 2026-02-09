@@ -1,0 +1,110 @@
+import {
+  PrayerTimesProvider,
+  FetchTimingsParams,
+  ProviderResponse,
+  ProviderTimings,
+} from './types';
+
+const ALADHAN_API_URL = 'https://api.aladhan.com/v1/timings';
+const REQUEST_TIMEOUT = 5000; // 5 seconds
+
+interface AladhanApiResponse {
+  code: number;
+  status: string;
+  data: {
+    timings: {
+      Fajr: string;
+      Sunrise: string;
+      Dhuhr: string;
+      Asr: string;
+      Maghrib: string;
+      Isha: string;
+    };
+    date: {
+      readable: string;
+      gregorian: {
+        date: string;
+      };
+    };
+    meta: {
+      timezone: string;
+    };
+  };
+}
+
+export class AladhanProvider implements PrayerTimesProvider {
+  readonly name = 'aladhan';
+
+  async fetchTimings(params: FetchTimingsParams): Promise<ProviderResponse> {
+    const { coords, date, timezone = 'Europe/Istanbul' } = params;
+
+    try {
+      // Convert YYYY-MM-DD to timestamp for Aladhan
+      const timestamp = Math.floor(new Date(`${date}T12:00:00`).getTime() / 1000);
+
+      // Build URL with params
+      // method=13 (Turkey Diyanet), school=1 (Hanafi)
+      const url = new URL(`${ALADHAN_API_URL}/${timestamp}`);
+      url.searchParams.set('latitude', coords.lat.toString());
+      url.searchParams.set('longitude', coords.lng.toString());
+      url.searchParams.set('method', '13'); // Turkey Diyanet
+      url.searchParams.set('school', '1'); // Hanafi
+      url.searchParams.set('timezonestring', timezone);
+
+      // Fetch with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
+      const response = await fetch(url.toString(), {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Aladhan API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data: AladhanApiResponse = await response.json();
+
+      if (data.code !== 200) {
+        throw new Error(`Aladhan API returned code ${data.code}`);
+      }
+
+      // Normalize timings to HH:MM format
+      const normalize = (time: string): string => {
+        // Remove timezone suffix if present (e.g., "05:30 (+03:00)")
+        return time.split(' ')[0];
+      };
+
+      const timings: ProviderTimings = {
+        fajr: normalize(data.data.timings.Fajr),
+        sunrise: normalize(data.data.timings.Sunrise),
+        dhuhr: normalize(data.data.timings.Dhuhr),
+        asr: normalize(data.data.timings.Asr),
+        maghrib: normalize(data.data.timings.Maghrib),
+        isha: normalize(data.data.timings.Isha),
+      };
+
+      return {
+        timings,
+        date,
+        timezone: data.data.meta.timezone,
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error(`Aladhan API timeout after ${REQUEST_TIMEOUT}ms`);
+        }
+        throw new Error(`Aladhan API error: ${error.message}`);
+      }
+      throw new Error('Aladhan API unknown error');
+    }
+  }
+}
+
+// Singleton instance
+export const aladhanProvider = new AladhanProvider();

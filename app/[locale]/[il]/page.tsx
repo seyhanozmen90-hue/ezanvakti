@@ -4,6 +4,8 @@ import { getTranslations } from 'next-intl/server';
 import { getTodayPrayerTimes, getMonthlyPrayerTimes } from '@/lib/api';
 import { getCityBySlug, getAllCities } from '@/lib/cities-helper';
 import { getNextPrayerTime, formatDate, formatHijriDate } from '@/lib/utils';
+import { getPrayerTimes } from '@/lib/services/prayerTimesService';
+import { hasCoordsExist } from '@/lib/geo/tr';
 import CountdownTimer from '@/components/CountdownTimer';
 import PrayerTimeCard from '@/components/PrayerTimeCard';
 import MonthlyTable from '@/components/MonthlyTable';
@@ -12,28 +14,6 @@ import CitySelector from '@/components/CitySelector';
 import JsonLd from '@/components/JsonLd';
 import CityComingSoon from '@/components/CityComingSoon';
 import { PrayerName, PrayerTime } from '@/lib/types';
-
-/**
- * Koordinat bazlı ezan vakti getirme (yeni sistem)
- */
-async function fetchPrayerTimesByCoordinates(lat: number, lng: number): Promise<PrayerTime | null> {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const response = await fetch(`${baseUrl}/api/prayer-times?lat=${lat}&lng=${lng}`, {
-      next: { revalidate: 3600 },
-    });
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Koordinat bazlı ezan vakti hatası:', error);
-    return null;
-  }
-}
 
 interface CityPageProps {
   params: {
@@ -166,18 +146,45 @@ export default async function CityPage({ params }: CityPageProps) {
   const tLocation = await getTranslations({ locale: params.locale, namespace: 'location' });
   const tFooter = await getTranslations({ locale: params.locale, namespace: 'footer' });
 
-  // Koordinat varsa yeni API'yi kullan, yoksa Diyanet API'sini kullan
-  const hasCoordinates = city.lat !== undefined && city.lng !== undefined;
+  // Check if coordinates exist for this city
+  const hasCoordinates = hasCoordsExist(city.slug);
+  
   let todayTimes: PrayerTime | null = null;
   let monthlyTimes: PrayerTime[] = [];
+  let isDbBacked = false;
 
   if (hasCoordinates) {
-    // Yeni sistem: Koordinat bazlı
-    todayTimes = await fetchPrayerTimesByCoordinates(city.lat!, city.lng!);
-    // Aylık veri henüz desteklenmiyor (koordinat bazlı API tek gün döndürür)
-    monthlyTimes = [];
+    // New system: DB-backed with provider fallback
+    try {
+      // Get today's date in YYYY-MM-DD format
+      const today = new Date();
+      const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+      const result = await getPrayerTimes({
+        city_slug: city.slug,
+        date,
+      });
+
+      // Convert service result to PrayerTime format
+      todayTimes = {
+        imsak: result.timings.fajr, // Note: Aladhan uses 'fajr' for 'imsak'
+        gunes: result.timings.sunrise,
+        ogle: result.timings.dhuhr,
+        ikindi: result.timings.asr,
+        aksam: result.timings.maghrib,
+        yatsi: result.timings.isha,
+        date: result.date,
+      };
+
+      isDbBacked = true;
+    } catch (error) {
+      console.error('DB-backed prayer times failed:', error);
+      // Fallback to old system
+      todayTimes = await getTodayPrayerTimes(city.id);
+      monthlyTimes = await getMonthlyPrayerTimes(city.id);
+    }
   } else {
-    // Eski sistem: Diyanet API (city ID bazlı)
+    // Old system: Diyanet API (city ID based)
     todayTimes = await getTodayPrayerTimes(city.id);
     monthlyTimes = await getMonthlyPrayerTimes(city.id);
   }
@@ -337,9 +344,9 @@ export default async function CityPage({ params }: CityPageProps) {
                 <div className="min-w-0">
                   <div className="text-lg sm:text-xl font-bold text-navy-900 dark:bg-gradient-to-r dark:from-gold-400 dark:to-gold-600 dark:bg-clip-text dark:text-transparent mb-1.5 flex items-center gap-2">
                     📍 {city.name}
-                    {hasCoordinates && (
+                    {isDbBacked && (
                       <span className="text-[10px] bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full border border-green-300 dark:border-green-700">
-                        Koordinat Bazlı
+                        DB-Backed
                       </span>
                     )}
                   </div>
@@ -354,7 +361,7 @@ export default async function CityPage({ params }: CityPageProps) {
                   {/* Koordinat bilgisi yoksa uyarı */}
                   {!hasCoordinates && (
                     <div className="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded border border-amber-300 dark:border-amber-700/50">
-                      ℹ️ Bu şehir için koordinat bazlı hesaplama henüz eklenmedi
+                      ℹ️ Bu şehir için DB-backed sistem henüz aktif değil (Diyanet API kullanılıyor)
                     </div>
                   )}
                   {/* Duvar Takvimi Linki */}

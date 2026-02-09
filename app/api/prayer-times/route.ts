@@ -1,144 +1,114 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const ALADHAN_API_URL = 'http://api.aladhan.com/v1/timings';
-
-interface AladhanResponse {
-  code: number;
-  status: string;
-  data: {
-    timings: {
-      Fajr: string;
-      Sunrise: string;
-      Dhuhr: string;
-      Asr: string;
-      Maghrib: string;
-      Isha: string;
-      Imsak: string;
-    };
-    date: {
-      readable: string;
-      hijri: {
-        date: string;
-        day: string;
-        month: {
-          en: string;
-          ar: string;
-        };
-        year: string;
-      };
-    };
-  };
-}
-
-interface PrayerTimesResponse {
-  imsak: string;
-  gunes: string;
-  ogle: string;
-  ikindi: string;
-  aksam: string;
-  yatsi: string;
-  date: string;
-  hijriDate: string;
-}
+import { getPrayerTimes } from '@/lib/services/prayerTimesService';
 
 /**
- * Koordinat bazlı ezan vakti API route
+ * Public API endpoint for prayer times
+ * 
+ * Returns DB-backed prayer times with caching and fallback
  * 
  * Query params:
- * - lat: Enlem (zorunlu)
- * - lng: Boylam (zorunlu)
- * - date: Tarih (opsiyonel, varsayılan bugün) - format: DD-MM-YYYY
+ * - city: City slug (required, e.g., 'izmir', 'istanbul')
+ * - district: District slug (optional, e.g., 'bornova', 'karsiyaka')
+ * - date: Date in YYYY-MM-DD format (optional, defaults to today in Europe/Istanbul)
  * 
- * Method: Diyanet metodu (method=13)
- * Revalidate: 1 saat
+ * Response:
+ * {
+ *   city: string,
+ *   district: string | null,
+ *   date: string,
+ *   timezone: string,
+ *   source: 'aladhan' | 'diyanet',
+ *   is_stale: boolean,
+ *   timings: {
+ *     fajr: string,
+ *     sunrise: string,
+ *     dhuhr: string,
+ *     asr: string,
+ *     maghrib: string,
+ *     isha: string
+ *   }
+ * }
  */
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const lat = searchParams.get('lat');
-  const lng = searchParams.get('lng');
-  const date = searchParams.get('date');
-
-  // Validasyon
-  if (!lat || !lng) {
-    return NextResponse.json(
-      { error: 'lat ve lng parametreleri zorunludur' },
-      { status: 400 }
-    );
-  }
-
-  const latitude = parseFloat(lat);
-  const longitude = parseFloat(lng);
-
-  if (isNaN(latitude) || isNaN(longitude)) {
-    return NextResponse.json(
-      { error: 'Geçersiz koordinat değerleri' },
-      { status: 400 }
-    );
-  }
-
-  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-    return NextResponse.json(
-      { error: 'Koordinatlar geçerli aralıkta değil' },
-      { status: 400 }
-    );
-  }
-
   try {
-    // Tarih parametresi (varsayılan bugün)
-    const timestamp = date 
-      ? Math.floor(new Date(date.split('-').reverse().join('-')).getTime() / 1000)
-      : Math.floor(Date.now() / 1000);
+    const searchParams = request.nextUrl.searchParams;
+    const city = searchParams.get('city');
+    const district = searchParams.get('district');
+    const dateParam = searchParams.get('date');
 
-    // Aladhan API çağrısı - method=13 (Türkiye Diyanet İşleri Başkanlığı)
-    const url = `${ALADHAN_API_URL}/${timestamp}?latitude=${latitude}&longitude=${longitude}&method=13`;
-    
-    const response = await fetch(url, {
-      next: { revalidate: 3600 }, // 1 saat cache
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Aladhan API error: ${response.status}`);
+    // Validation
+    if (!city) {
+      return NextResponse.json(
+        { error: 'city parameter is required' },
+        { status: 400 }
+      );
     }
 
-    const data: AladhanResponse = await response.json();
+    // Default to today in Europe/Istanbul timezone
+    const date = dateParam || getTodayInIstanbul();
 
-    if (data.code !== 200) {
-      throw new Error('API yanıt kodu başarısız');
+    // Validate date format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return NextResponse.json(
+        { error: 'date must be in YYYY-MM-DD format' },
+        { status: 400 }
+      );
     }
 
-    // Türkiye formatına normalize et (HH:MM formatında döndür)
-    const normalize = (time: string) => {
-      // Aladhan bazen "(+03:00)" gibi timezone ekler, temizle
-      return time.split(' ')[0];
-    };
-
-    const result: PrayerTimesResponse = {
-      imsak: normalize(data.data.timings.Imsak),
-      gunes: normalize(data.data.timings.Sunrise),
-      ogle: normalize(data.data.timings.Dhuhr),
-      ikindi: normalize(data.data.timings.Asr),
-      aksam: normalize(data.data.timings.Maghrib),
-      yatsi: normalize(data.data.timings.Isha),
-      date: data.data.date.readable,
-      hijriDate: `${data.data.date.hijri.day} ${data.data.date.hijri.month.ar} ${data.data.date.hijri.year}`,
-    };
-
-    return NextResponse.json(result, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200',
-      },
+    // Get prayer times from service (DB-backed with provider fallback)
+    const result = await getPrayerTimes({
+      city_slug: city,
+      district_slug: district || undefined,
+      date,
     });
+
+    // Return with cache headers
+    const response = NextResponse.json({
+      city: result.city_slug,
+      district: result.district_slug,
+      date: result.date,
+      timezone: result.timezone,
+      source: result.source,
+      is_stale: result.is_stale,
+      timings: result.timings,
+    });
+
+    // Cache for 1 hour if not stale, 5 minutes if stale
+    const maxAge = result.is_stale ? 300 : 3600;
+    response.headers.set(
+      'Cache-Control',
+      `public, s-maxage=${maxAge}, stale-while-revalidate=${maxAge * 2}`
+    );
+
+    return response;
   } catch (error) {
-    console.error('Ezan vakti API hatası:', error);
+    console.error('Prayer times API error:', error);
+
+    const message = error instanceof Error ? error.message : 'Unknown error';
+
     return NextResponse.json(
-      { 
-        error: 'Ezan vakitleri alınamadı',
-        details: error instanceof Error ? error.message : 'Bilinmeyen hata'
+      {
+        error: 'Failed to fetch prayer times',
+        details: message,
       },
       { status: 500 }
     );
   }
+}
+
+/**
+ * Get today's date in Europe/Istanbul timezone
+ * Returns YYYY-MM-DD format
+ */
+function getTodayInIstanbul(): string {
+  const now = new Date();
+  const istanbulTime = new Date(
+    now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' })
+  );
+
+  const year = istanbulTime.getFullYear();
+  const month = String(istanbulTime.getMonth() + 1).padStart(2, '0');
+  const day = String(istanbulTime.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 }
