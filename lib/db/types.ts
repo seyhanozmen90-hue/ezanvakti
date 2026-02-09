@@ -1,8 +1,7 @@
 export interface PrayerTimeRecord {
-  id: number;
   city_slug: string;
   district_slug: string | null;
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD or Date
   fajr: string; // HH:MM
   sunrise: string;
   dhuhr: string;
@@ -11,9 +10,7 @@ export interface PrayerTimeRecord {
   isha: string;
   timezone: string;
   source: 'aladhan' | 'diyanet';
-  fetched_at: Date;
-  created_at: Date;
-  updated_at: Date;
+  fetched_at: Date | string;
 }
 
 export interface PrayerTimings {
