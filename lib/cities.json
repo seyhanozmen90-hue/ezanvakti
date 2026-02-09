@@ -65,6 +65,8 @@
       "id": "9245",
       "name": "İzmir",
       "slug": "izmir",
+      "lat": 38.4237,
+      "lng": 27.1428,
       "districts": [
         {"id": "9245", "name": "Merkez", "slug": "merkez"},
         {"id": "17352", "name": "Bornova", "slug": "bornova"},

@@ -3,6 +3,10 @@ export interface City {
   name: string;
   slug: string;
   districts: District[];
+
+  // Ezan vakti & kıble için (opsiyonel, geriye uyumlu)
+  lat?: number;
+  lng?: number;
 }
 
 export interface District {
