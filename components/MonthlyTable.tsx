@@ -15,7 +15,8 @@ interface MonthlyTableProps {
 export default function MonthlyTable({ times, locale, cityName }: MonthlyTableProps) {
   const t = useTranslations('calendar');
   const tPrayers = useTranslations('prayers');
-  const [isOpen, setIsOpen] = useState(false);
+  // Monthly table open by default
+  const [isOpen, setIsOpen] = useState(true);
 
   return (
     <div className="w-full mt-6 bg-white dark:bg-gradient-to-br dark:from-navy-dark/60 dark:to-navy-darker/60 backdrop-blur-sm rounded-xl shadow-lg dark:shadow-xl overflow-hidden border border-gold-500 dark:border-gold-500/20">

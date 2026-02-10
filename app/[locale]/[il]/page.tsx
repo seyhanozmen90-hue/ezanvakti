@@ -171,6 +171,16 @@ export default async function CityPage({ params }: CityPageProps) {
       };
 
       isDbBacked = true;
+
+      // Fetch monthly data from old system API (temporary)
+      // TODO: In future, implement monthly fetch from DB-backed system
+      try {
+        monthlyTimes = await getMonthlyPrayerTimes(city.id);
+      } catch (monthlyError) {
+        console.warn('Monthly prayer times fetch failed:', monthlyError);
+        // Empty monthly times if it fails
+        monthlyTimes = [];
+      }
     } catch (error) {
       console.error('DB-backed prayer times failed:', error);
       // Fallback to old system

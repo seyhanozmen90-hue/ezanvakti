@@ -121,16 +121,17 @@ export async function POST(request: NextRequest) {
 /**
  * Get today's date in Europe/Istanbul timezone
  * Returns YYYY-MM-DD format
+ * 
+ * Uses Intl.DateTimeFormat for reliable timezone conversion
  */
 function getTodayInIstanbul(): string {
-  const now = new Date();
-  const istanbulTime = new Date(
-    now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' })
-  );
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
 
-  const year = istanbulTime.getFullYear();
-  const month = String(istanbulTime.getMonth() + 1).padStart(2, '0');
-  const day = String(istanbulTime.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
+  // en-CA locale gives YYYY-MM-DD format directly
+  return formatter.format(new Date());
 }

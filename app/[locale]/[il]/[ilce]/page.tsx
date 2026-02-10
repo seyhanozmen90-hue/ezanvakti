@@ -5,6 +5,8 @@ import { getTodayPrayerTimes, getMonthlyPrayerTimes } from '@/lib/api';
 import { getDistrictBySlug, getAllCityDistrictCombinations, getCityBySlug } from '@/lib/cities-helper';
 import { getNextPrayerTime, formatDate, formatHijriDate } from '@/lib/utils';
 import { isDistrictIndexed } from '@/lib/seo.config';
+import { getPrayerTimes } from '@/lib/services/prayerTimesService';
+import { hasCoordsExist } from '@/lib/geo/tr';
 import CountdownTimer from '@/components/CountdownTimer';
 import PrayerTimeCard from '@/components/PrayerTimeCard';
 import MonthlyTable from '@/components/MonthlyTable';
@@ -12,7 +14,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import CitySelector from '@/components/CitySelector';
 import JsonLd from '@/components/JsonLd';
 import CityComingSoon from '@/components/CityComingSoon';
-import { PrayerName } from '@/lib/types';
+import { PrayerName, PrayerTime } from '@/lib/types';
 
 // Force dynamic rendering (SSR) - no static generation
 export const dynamic = 'force-dynamic';
@@ -156,8 +158,58 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
   const tNav = await getTranslations({ locale: params.locale, namespace: 'nav' });
   const tFooter = await getTranslations({ locale: params.locale, namespace: 'footer' });
 
-  const todayTimes = await getTodayPrayerTimes(city.id, district.id);
-  const monthlyTimes = await getMonthlyPrayerTimes(city.id, district.id);
+  // Check if coordinates exist for this district
+  const hasCoordinates = hasCoordsExist(city.slug, district.slug);
+  
+  let todayTimes: PrayerTime | null = null;
+  let monthlyTimes: PrayerTime[] = [];
+  let isDbBacked = false;
+
+  if (hasCoordinates) {
+    // New system: DB-backed with provider fallback (district-level)
+    try {
+      // Get today's date in YYYY-MM-DD format
+      const today = new Date();
+      const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+      const serviceResult = await getPrayerTimes({
+        city_slug: city.slug,
+        district_slug: district.slug,
+        date,
+      });
+
+      // Convert service result to PrayerTime format
+      todayTimes = {
+        imsak: serviceResult.timings.fajr,
+        gunes: serviceResult.timings.sunrise,
+        ogle: serviceResult.timings.dhuhr,
+        ikindi: serviceResult.timings.asr,
+        aksam: serviceResult.timings.maghrib,
+        yatsi: serviceResult.timings.isha,
+        date: serviceResult.date,
+      };
+
+      isDbBacked = true;
+
+      // Fetch monthly data from old system API (temporary)
+      // TODO: In future, implement monthly fetch from DB-backed system
+      try {
+        monthlyTimes = await getMonthlyPrayerTimes(city.id, district.id);
+      } catch (monthlyError) {
+        console.warn('Monthly prayer times fetch failed:', monthlyError);
+        monthlyTimes = [];
+      }
+    } catch (error) {
+      console.error('DB-backed prayer times failed for district:', error);
+      // Fallback to old system
+      todayTimes = await getTodayPrayerTimes(city.id, district.id);
+      monthlyTimes = await getMonthlyPrayerTimes(city.id, district.id);
+    }
+  } else {
+    // Old system: Diyanet API (city & district ID based)
+    todayTimes = await getTodayPrayerTimes(city.id, district.id);
+    monthlyTimes = await getMonthlyPrayerTimes(city.id, district.id);
+  }
 
   if (!todayTimes) {
     return (
@@ -285,6 +337,11 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
                 <div>
                   <div className="text-xl sm:text-2xl md:text-3xl font-bold text-navy-900 dark:bg-gradient-to-r dark:from-gold-400 dark:to-gold-600 dark:bg-clip-text dark:text-transparent mb-2 sm:mb-3 flex items-center gap-2">
                     📍 {city.name} / {district.name}
+                    {isDbBacked && (
+                      <span className="text-[10px] bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full border border-green-300 dark:border-green-700">
+                        DB-Backed
+                      </span>
+                    )}
                   </div>
                   <p className="text-navy-900 dark:text-gold-300/80 text-sm sm:text-base md:text-lg font-semibold">
                     {formatDate(currentDate)}
@@ -293,6 +350,12 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
                     <p className="text-xs sm:text-sm text-navy-900 dark:text-gold-400/60 mt-1">
                       {formatHijriDate(todayTimes.hijriDate)}
                     </p>
+                  )}
+                  {/* Koordinat bilgisi yoksa uyarı */}
+                  {!hasCoordinates && (
+                    <div className="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded border border-amber-300 dark:border-amber-700/50">
+                      ℹ️ Bu ilçe için DB-backed sistem henüz aktif değil (Diyanet API kullanılıyor)
+                    </div>
                   )}
                   {/* Duvar Takvimi Linki */}
                   <Link
