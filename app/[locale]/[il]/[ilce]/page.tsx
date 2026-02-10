@@ -435,6 +435,9 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
               </a>
               {' '}{tFooter('dataProviderLink')}
             </p>
+            <p className="mb-3 text-xs text-navy-700 dark:text-gold-400/60 italic">
+              ℹ️ Namaz vakitleri, hesaplama yöntemlerine bağlı olarak birkaç dakikalık farklılık gösterebilir. Resmî referans için Diyanet İşleri Başkanlığı esas alınmalıdır.
+            </p>
             <div className="flex flex-wrap items-center justify-center gap-3 mb-2">
               <a
                 href="/hakkimizda"
