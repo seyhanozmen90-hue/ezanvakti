@@ -15,18 +15,14 @@ import JsonLd from '@/components/JsonLd';
 import CityComingSoon from '@/components/CityComingSoon';
 import { PrayerName, PrayerTime } from '@/lib/types';
 
+// Force dynamic rendering (SSR) - no static generation
+export const dynamic = 'force-dynamic';
+
 interface CityPageProps {
   params: {
     locale: string;
     il: string;
   };
-}
-
-export async function generateStaticParams() {
-  const cities = getAllCities();
-  return cities.map((city) => ({
-    il: city.slug,
-  }));
 }
 
 export async function generateMetadata({ params }: CityPageProps): Promise<Metadata> {
@@ -129,8 +125,6 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
     },
   };
 }
-
-export const revalidate = 3600;
 
 export default async function CityPage({ params }: CityPageProps) {
   const city = getCityBySlug(params.il);

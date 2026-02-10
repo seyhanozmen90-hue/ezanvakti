@@ -14,22 +14,15 @@ import JsonLd from '@/components/JsonLd';
 import CityComingSoon from '@/components/CityComingSoon';
 import { PrayerName } from '@/lib/types';
 
+// Force dynamic rendering (SSR) - no static generation
+export const dynamic = 'force-dynamic';
+
 interface DistrictPageProps {
   params: {
     locale: string;
     il: string;
     ilce: string;
   };
-}
-
-export async function generateStaticParams() {
-  const combinations = getAllCityDistrictCombinations();
-  return combinations
-    .filter(c => c.district)
-    .map(({ city, district }) => ({
-      il: city.slug,
-      ilce: district!.slug,
-    }));
 }
 
 export async function generateMetadata({ params }: DistrictPageProps): Promise<Metadata> {
@@ -139,8 +132,6 @@ export async function generateMetadata({ params }: DistrictPageProps): Promise<M
     },
   };
 }
-
-export const revalidate = 3600;
 
 export default async function DistrictPage({ params }: DistrictPageProps) {
   const result = getDistrictBySlug(params.il, params.ilce);

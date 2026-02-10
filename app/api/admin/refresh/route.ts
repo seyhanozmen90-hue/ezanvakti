@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPrayerTimes } from '@/lib/services/prayerTimesService';
 import { getAvailableCities } from '@/lib/geo/tr';
 
+// Force dynamic rendering (no static generation)
+export const dynamic = 'force-dynamic';
+
 /**
  * Secure cron refresh endpoint
  * 

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPrayerTimes } from '@/lib/services/prayerTimesService';
 
+// Force dynamic rendering (no static generation)
+export const dynamic = 'force-dynamic';
+
 /**
  * Public API endpoint for prayer times
  * 
