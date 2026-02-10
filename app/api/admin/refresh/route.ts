@@ -1,122 +1,108 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { refreshPrayerTimes } from '@/lib/services/prayerTimesService';
-import { getAvailableCities, getAvailableDistricts } from '@/lib/geo/tr';
+import { getPrayerTimes } from '@/lib/services/prayerTimesService';
+import { getAvailableCities } from '@/lib/geo/tr';
 
 /**
- * Admin endpoint to refresh prayer times
+ * Secure cron refresh endpoint
  * 
- * Protected by secret token (X-Admin-Token header or token query param)
+ * Authentication: Bearer token in Authorization header
  * 
  * Usage:
- * POST /api/admin/refresh?token=YOUR_SECRET
- * 
- * Body (optional):
- * {
- *   cities: ['izmir', 'istanbul'],  // optional, defaults to all available cities
- *   date: '2026-02-10',             // optional, defaults to today
- *   includeDistricts: true          // optional, defaults to false
- * }
+ * POST /api/admin/refresh
+ * Headers:
+ *   Authorization: Bearer YOUR_CRON_SECRET
  * 
  * Response:
  * {
  *   success: true,
- *   refreshed: 5,
- *   failed: 1,
- *   results: [...]
+ *   refreshed: 3
  * }
+ * 
+ * IMPORTANT: This is a server-only endpoint.
+ * Never expose CRON_SECRET to client.
  */
 export async function POST(request: NextRequest) {
   try {
-    // Authentication check
-    const token =
-      request.headers.get('x-admin-token') ||
-      request.nextUrl.searchParams.get('token');
-
-    const expectedToken = process.env.ADMIN_REFRESH_TOKEN;
-
-    if (!expectedToken) {
+    // Authentication: Check Authorization header
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
-        { error: 'ADMIN_REFRESH_TOKEN not configured' },
-        { status: 500 }
-      );
-    }
-
-    if (!token || token !== expectedToken) {
-      return NextResponse.json(
-        { error: 'Unauthorized. Invalid or missing token.' },
+        { 
+          success: false,
+          error: 'Unauthorized. Missing or invalid Authorization header.' 
+        },
         { status: 401 }
       );
     }
 
-    // Parse request body
-    const body = await request.json().catch(() => ({}));
-    const {
-      cities = getAvailableCities(),
-      date = getTodayInIstanbul(),
-      includeDistricts = false,
-    } = body;
+    const token = authHeader.substring(7); // Remove "Bearer " prefix
+    const expectedToken = process.env.CRON_SECRET;
 
-    // Build location list
-    const locations: Array<{ city_slug: string; district_slug?: string }> = [];
-
-    for (const city of cities) {
-      // Add city itself
-      locations.push({ city_slug: city });
-
-      // Add districts if requested
-      if (includeDistricts) {
-        const districts = getAvailableDistricts(city);
-        for (const district of districts) {
-          locations.push({ city_slug: city, district_slug: district });
-        }
-      }
+    if (!expectedToken) {
+      console.error('CRON_SECRET environment variable not configured');
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Server configuration error' 
+        },
+        { status: 500 }
+      );
     }
 
-    // Refresh each location
-    const results = await Promise.allSettled(
-      locations.map(async (loc) => {
-        const result = await refreshPrayerTimes({
-          city_slug: loc.city_slug,
-          district_slug: loc.district_slug,
-          date,
-        });
+    if (token !== expectedToken) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Unauthorized. Invalid token.' 
+        },
+        { status: 401 }
+      );
+    }
 
-        return {
-          city: loc.city_slug,
-          district: loc.district_slug || null,
-          date: result.date,
-          source: result.source,
-          success: true,
-        };
+    // Get today's date in Europe/Istanbul timezone
+    const today = getTodayInIstanbul();
+
+    // Load all available cities
+    const cities = getAvailableCities();
+
+    if (cities.length === 0) {
+      return NextResponse.json({
+        success: true,
+        refreshed: 0,
+        message: 'No cities configured in lib/geo/tr.ts',
+      });
+    }
+
+    // Refresh prayer times for each city
+    // Use Promise.allSettled to continue even if one fails
+    const results = await Promise.allSettled(
+      cities.map(async (city_slug) => {
+        try {
+          await getPrayerTimes({
+            city_slug,
+            district_slug: undefined, // City-level only for cron
+            date: today,
+          });
+          return { city_slug, success: true };
+        } catch (error) {
+          console.error(`Failed to refresh ${city_slug}:`, error);
+          return { city_slug, success: false, error };
+        }
       })
     );
 
-    // Count results
-    const successful = results.filter((r) => r.status === 'fulfilled');
-    const failed = results.filter((r) => r.status === 'rejected');
+    // Count successful refreshes
+    const successful = results.filter(
+      (r) => r.status === 'fulfilled' && r.value.success
+    );
 
-    const response = {
+    return NextResponse.json({
       success: true,
       refreshed: successful.length,
-      failed: failed.length,
-      date,
-      results: results.map((r, i) => {
-        if (r.status === 'fulfilled') {
-          return r.value;
-        } else {
-          return {
-            city: locations[i].city_slug,
-            district: locations[i].district_slug || null,
-            success: false,
-            error: r.reason.message,
-          };
-        }
-      }),
-    };
-
-    return NextResponse.json(response);
+    });
   } catch (error) {
-    console.error('Admin refresh error:', error);
+    console.error('Cron refresh error:', error);
 
     return NextResponse.json(
       {
@@ -131,6 +117,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * Get today's date in Europe/Istanbul timezone
+ * Returns YYYY-MM-DD format
  */
 function getTodayInIstanbul(): string {
   const now = new Date();
