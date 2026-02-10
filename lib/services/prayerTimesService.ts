@@ -4,6 +4,16 @@ import { getActiveProvider } from '../providers';
 import { getCoords } from '../geo/tr';
 import { lockManager } from './lockManager';
 
+/**
+ * Prayer Times Service
+ * 
+ * IMPORTANT RULES:
+ * 1. district_slug is ALWAYS used together with city_slug (never alone)
+ * 2. Cache key format: prayer:${city_slug}:${district_slug ?? 'city'}:${date}
+ * 3. District queries NEVER fall back to city-level data
+ * 4. Each city/district combination has its own coordinates and cache
+ */
+
 export interface PrayerTimesResult {
   city_slug: string;
   district_slug: string | null;
@@ -30,17 +40,28 @@ export interface GetPrayerTimesParams {
 /**
  * Get prayer times with DB caching and provider fallback
  * 
+ * Params:
+ * - city_slug: Always required (e.g., 'izmir', 'istanbul')
+ * - district_slug: Optional, but when provided, queries city+district combination
+ * - date: Required in YYYY-MM-DD format
+ * 
  * Flow:
- * 1. Try to get from DB
- * 2. If not found, acquire lock
- * 3. Fetch from provider and upsert to DB
- * 4. If provider fails, return last known data from DB (stale)
- * 5. If no data at all, throw error
+ * 1. Try to get from DB (exact city+district match)
+ * 2. If not found, acquire lock (key: prayer:city:district:date)
+ * 3. Fetch from provider using coordinates (city+district combo)
+ * 4. Upsert to DB with exact city+district
+ * 5. If provider fails, return last known data (NO fallback to city if district requested)
+ * 6. If no data at all, throw error
  */
 export async function getPrayerTimes(
   params: GetPrayerTimesParams
 ): Promise<PrayerTimesResult> {
   const { city_slug, district_slug, date } = params;
+
+  // Validation: district_slug must always be used with city_slug
+  if (district_slug && !city_slug) {
+    throw new Error('district_slug cannot be used without city_slug');
+  }
 
   // Step 1: Try DB first
   const cached = await getPrayerTimesFromDb({
@@ -55,7 +76,8 @@ export async function getPrayerTimes(
 
   // Step 2: Not in DB, need to fetch from provider
   // Acquire lock to prevent stampede
-  const lockKey = `prayer-times:${city_slug}:${district_slug || 'city'}:${date}`;
+  // Lock key format: prayer:city_slug:district_slug_or_city:date
+  const lockKey = `prayer:${city_slug}:${district_slug ?? 'city'}:${date}`;
   const lockAcquired = await lockManager.tryAcquire(lockKey, 10000);
 
   if (!lockAcquired) {
@@ -124,23 +146,36 @@ export async function getPrayerTimes(
 
 /**
  * Get fallback data from DB (last known prayer times)
+ * 
+ * IMPORTANT: If district_slug is provided, ONLY returns district-level data.
+ * Never falls back to city-level data when district is specified.
  */
 async function getFallback(
   city_slug: string,
   district_slug: string | undefined,
   date: string
 ): Promise<PrayerTimesResult> {
+  // Query with exact city_slug + district_slug combination
+  // This ensures district queries don't fall back to city data
   const lastKnown = await getLastKnownPrayerTimes(city_slug, district_slug);
 
   if (!lastKnown) {
+    const locationStr = district_slug 
+      ? `${city_slug}/${district_slug}` 
+      : city_slug;
+    
     throw new Error(
-      `No prayer times available for ${city_slug}${district_slug ? `/${district_slug}` : ''} on ${date}. ` +
-      `Provider is down and no cached data exists.`
+      `No prayer times available for ${locationStr} on ${date}. ` +
+      `Provider is down and no cached data exists for this specific location.`
     );
   }
 
+  const locationStr = district_slug 
+    ? `${city_slug}/${district_slug}` 
+    : city_slug;
+
   console.warn(
-    `Using stale data for ${city_slug}${district_slug ? `/${district_slug}` : ''} ` +
+    `Using stale data for ${locationStr} ` +
     `(requested: ${date}, using: ${lastKnown.date})`
   );
 
