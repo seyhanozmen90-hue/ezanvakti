@@ -10,13 +10,12 @@ export async function getPrayerTimesFromDb(
   try {
     const supabase = getSupabaseServerClient();
 
+    // Build query with all filters BEFORE calling maybeSingle
     let query = supabase
       .from('prayer_times')
       .select('*')
       .eq('city_slug', params.city_slug)
-      .eq('date', params.date)
-      .limit(1)
-      .single();
+      .eq('date', params.date);
 
     // Handle district_slug: match null if not provided, or exact match
     if (params.district_slug) {
@@ -25,17 +24,14 @@ export async function getPrayerTimesFromDb(
       query = query.is('district_slug', null);
     }
 
-    const { data, error } = await query;
+    // Call maybeSingle at the end (returns null if no rows, no error)
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
-      // 'PGRST116' is Supabase error code for "no rows returned"
-      if (error.code === 'PGRST116') {
-        return null;
-      }
       throw error;
     }
 
-    return data as PrayerTimeRecord;
+    return data;
   } catch (error) {
     console.error('Error fetching prayer times from DB:', error);
     throw error;
@@ -52,14 +48,14 @@ export async function getLastKnownPrayerTimes(
   try {
     const supabase = getSupabaseServerClient();
 
+    // Build query with all filters BEFORE calling maybeSingle
     let query = supabase
       .from('prayer_times')
       .select('*')
       .eq('city_slug', city_slug)
       .order('date', { ascending: false })
       .order('fetched_at', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
 
     // Handle district_slug
     if (district_slug) {
@@ -68,16 +64,14 @@ export async function getLastKnownPrayerTimes(
       query = query.is('district_slug', null);
     }
 
-    const { data, error } = await query;
+    // Call maybeSingle at the end
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
-      }
       throw error;
     }
 
-    return data as PrayerTimeRecord;
+    return data;
   } catch (error) {
     console.error('Error fetching last known prayer times:', error);
     return null;
