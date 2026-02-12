@@ -354,7 +354,7 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
                   {/* Koordinat bilgisi yoksa uyarı */}
                   {!hasCoordinates && (
                     <div className="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded border border-amber-300 dark:border-amber-700/50">
-                      ℹ️ Bu ilçe için DB-backed sistem henüz aktif değil (Diyanet API kullanılıyor)
+                      ℹ️ Bu ilçe için geçici olarak Diyanet verisi gösteriliyor.
                     </div>
                   )}
                   {/* Duvar Takvimi Linki */}

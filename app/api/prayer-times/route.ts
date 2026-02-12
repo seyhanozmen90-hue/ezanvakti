@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPrayerTimes } from '@/lib/services/prayerTimesService';
+import { getTodayPrayerTimes } from '@/lib/api';
+import { getCityBySlug, getDistrictBySlug } from '@/lib/cities-helper';
 
 // Force dynamic rendering (no static generation)
 export const dynamic = 'force-dynamic';
@@ -89,6 +91,91 @@ export async function GET(request: NextRequest) {
 
     const message = error instanceof Error ? error.message : 'Unknown error';
 
+    // Check if error is due to missing coordinates
+    const isMissingCoords = 
+      message.includes('Unknown city') || 
+      message.includes('Unknown district') || 
+      message.includes('Coordinates not found') ||
+      message.includes('No prayer times available');
+
+    if (isMissingCoords) {
+      // Fallback to legacy Diyanet API
+      try {
+        console.log('⚠️ Coordinates missing, falling back to Diyanet API');
+        
+        const searchParams = request.nextUrl.searchParams;
+        const citySlug = searchParams.get('city')!;
+        const districtSlug = searchParams.get('district');
+        const dateParam = searchParams.get('date');
+        const date = dateParam || getTodayInIstanbul();
+
+        // Get city and district info
+        let cityId: string | undefined;
+        let districtId: string | undefined;
+
+        if (districtSlug) {
+          const result = getDistrictBySlug(citySlug, districtSlug);
+          if (result) {
+            cityId = result.city.id;
+            districtId = result.district.id;
+          }
+        } else {
+          const city = getCityBySlug(citySlug);
+          if (city) {
+            cityId = city.id;
+          }
+        }
+
+        if (!cityId) {
+          throw new Error('City not found in cities database');
+        }
+
+        // Fetch from legacy Diyanet API
+        const legacyTimes = await getTodayPrayerTimes(cityId, districtId);
+
+        if (!legacyTimes) {
+          throw new Error('No data from legacy Diyanet API');
+        }
+
+        // Return in standardized format
+        const response = NextResponse.json({
+          city: citySlug,
+          district: districtSlug || null,
+          date: date,
+          timezone: 'Europe/Istanbul',
+          source: 'diyanet',
+          is_stale: false,
+          timings: {
+            fajr: legacyTimes.imsak,
+            sunrise: legacyTimes.gunes,
+            dhuhr: legacyTimes.ogle,
+            asr: legacyTimes.ikindi,
+            maghrib: legacyTimes.aksam,
+            isha: legacyTimes.yatsi,
+          },
+        });
+
+        // Cache for 1 hour
+        response.headers.set(
+          'Cache-Control',
+          'public, s-maxage=3600, stale-while-revalidate=7200'
+        );
+
+        return response;
+      } catch (fallbackError) {
+        console.error('Legacy Diyanet API fallback failed:', fallbackError);
+        
+        return NextResponse.json(
+          {
+            error: 'Failed to fetch prayer times',
+            details: 'Both modern and legacy systems failed',
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // For other errors, return 500
     return NextResponse.json(
       {
         error: 'Failed to fetch prayer times',
