@@ -15,7 +15,7 @@ export interface LocationCoords {
  * - Districts are official administrative districts only
  * - Coordinates are accurate GPS locations (WGS84)
  * 
- * TOTAL: 30 cities + ~120 districts = ~150 locations
+ * TOTAL: 81 cities (all Turkey) + ~100 major districts = ~180 locations
  */
 const TURKEY_COORDINATES: LocationCoords[] = [
   // ============================================================================
@@ -259,6 +259,88 @@ const TURKEY_COORDINATES: LocationCoords[] = [
   { city_slug: 'eskisehir', coords: { lat: 39.7767, lng: 30.5206 } },
   { city_slug: 'eskisehir', district_slug: 'odunpazari', coords: { lat: 39.7833, lng: 30.5167 } },
   { city_slug: 'eskisehir', district_slug: 'tepebasi', coords: { lat: 39.7667, lng: 30.5333 } },
+
+  // ============================================================================
+  // ADDITIONAL MAJOR CITIES (31-81)
+  // ============================================================================
+  
+  // Black Sea Region
+  { city_slug: 'samsun', coords: { lat: 41.2867, lng: 36.33 } },
+  { city_slug: 'trabzon', coords: { lat: 41.0027, lng: 39.7168 } },
+  { city_slug: 'ordu', coords: { lat: 40.9833, lng: 37.8833 } },
+  { city_slug: 'rize', coords: { lat: 41.0201, lng: 40.5234 } },
+  { city_slug: 'giresun', coords: { lat: 40.9128, lng: 38.3895 } },
+  { city_slug: 'zonguldak', coords: { lat: 41.4564, lng: 31.7987 } },
+  { city_slug: 'kastamonu', coords: { lat: 41.3887, lng: 33.7827 } },
+  { city_slug: 'sinop', coords: { lat: 42.0231, lng: 35.1531 } },
+  { city_slug: 'amasya', coords: { lat: 40.6499, lng: 35.8353 } },
+  { city_slug: 'tokat', coords: { lat: 40.3167, lng: 36.55 } },
+  { city_slug: 'corum', coords: { lat: 40.5506, lng: 34.9556 } },
+  { city_slug: 'bolu', coords: { lat: 40.7391, lng: 31.6114 } },
+  { city_slug: 'duzce', coords: { lat: 40.8438, lng: 31.1565 } },
+  { city_slug: 'bartin', coords: { lat: 41.6344, lng: 32.3375 } },
+  { city_slug: 'karabuk', coords: { lat: 41.2061, lng: 32.6204 } },
+  { city_slug: 'artvin', coords: { lat: 41.1828, lng: 41.8183 } },
+  { city_slug: 'gumushane', coords: { lat: 40.4602, lng: 39.4814 } },
+  { city_slug: 'bayburt', coords: { lat: 40.2552, lng: 40.2249 } },
+  
+  // Central Anatolia
+  { city_slug: 'sivas', coords: { lat: 39.7477, lng: 37.0179 } },
+  { city_slug: 'yozgat', coords: { lat: 39.8181, lng: 34.8147 } },
+  { city_slug: 'kirsehir', coords: { lat: 39.1467, lng: 34.1709 } },
+  { city_slug: 'nevsehir', coords: { lat: 38.6939, lng: 34.7241 } },
+  { city_slug: 'nigde', coords: { lat: 37.9667, lng: 34.6833 } },
+  { city_slug: 'aksaray', coords: { lat: 38.3687, lng: 34.0370 } },
+  { city_slug: 'kirikkale', coords: { lat: 39.8468, lng: 33.5153 } },
+  { city_slug: 'cankiri', coords: { lat: 40.6013, lng: 33.6134 } },
+  
+  // Aegean Region
+  { city_slug: 'aydin', coords: { lat: 37.8560, lng: 27.8416 } },
+  { city_slug: 'mugla', coords: { lat: 37.2153, lng: 28.3636 } },
+  { city_slug: 'denizli', coords: { lat: 37.7765, lng: 29.0864 } },
+  { city_slug: 'usak', coords: { lat: 38.6823, lng: 29.4082 } },
+  { city_slug: 'afyonkarahisar', coords: { lat: 38.7507, lng: 30.5567 } },
+  { city_slug: 'kutahya', coords: { lat: 39.4167, lng: 29.9833 } },
+  { city_slug: 'bilecik', coords: { lat: 40.1503, lng: 29.9831 } },
+  
+  // Marmara Region
+  { city_slug: 'sakarya', coords: { lat: 40.7569, lng: 30.3783 } },
+  { city_slug: 'tekirdag', coords: { lat: 40.9833, lng: 27.5167 } },
+  { city_slug: 'edirne', coords: { lat: 41.6771, lng: 26.5557 } },
+  { city_slug: 'kirklareli', coords: { lat: 41.7333, lng: 27.2167 } },
+  { city_slug: 'canakkale', coords: { lat: 40.1553, lng: 26.4142 } },
+  { city_slug: 'balikesir', coords: { lat: 39.6484, lng: 27.8826 } },
+  { city_slug: 'yalova', coords: { lat: 40.6500, lng: 29.2667 } },
+  
+  // Mediterranean Region
+  { city_slug: 'isparta', coords: { lat: 37.7648, lng: 30.5566 } },
+  { city_slug: 'burdur', coords: { lat: 37.7167, lng: 30.2833 } },
+  { city_slug: 'osmaniye', coords: { lat: 37.0742, lng: 36.2478 } },
+  { city_slug: 'kahramanmaras', coords: { lat: 37.5833, lng: 36.9333 } },
+  { city_slug: 'adiyaman', coords: { lat: 37.7636, lng: 38.2765 } },
+  
+  // Southeast Anatolia
+  { city_slug: 'mardin', coords: { lat: 37.3212, lng: 40.7245 } },
+  { city_slug: 'batman', coords: { lat: 37.8812, lng: 41.1351 } },
+  { city_slug: 'sirnak', coords: { lat: 37.5163, lng: 42.4611 } },
+  { city_slug: 'siirt', coords: { lat: 37.9333, lng: 41.95 } },
+  { city_slug: 'kilis', coords: { lat: 36.7184, lng: 37.1212 } },
+  
+  // Eastern Anatolia
+  { city_slug: 'erzurum', coords: { lat: 39.9000, lng: 41.2700 } },
+  { city_slug: 'erzincan', coords: { lat: 39.75, lng: 39.5 } },
+  { city_slug: 'agri', coords: { lat: 39.7217, lng: 43.0567 } },
+  { city_slug: 'kars', coords: { lat: 40.6167, lng: 43.1 } },
+  { city_slug: 'igdir', coords: { lat: 39.9237, lng: 44.0450 } },
+  { city_slug: 'ardahan', coords: { lat: 41.1105, lng: 42.7022 } },
+  { city_slug: 'van', coords: { lat: 38.4891, lng: 43.3803 } },
+  { city_slug: 'mus', coords: { lat: 38.7432, lng: 41.5064 } },
+  { city_slug: 'bitlis', coords: { lat: 38.4014, lng: 42.1089 } },
+  { city_slug: 'hakkari', coords: { lat: 37.5744, lng: 43.7408 } },
+  { city_slug: 'bingol', coords: { lat: 38.8854, lng: 40.4986 } },
+  { city_slug: 'tunceli', coords: { lat: 39.1079, lng: 39.5401 } },
+  { city_slug: 'elazig', coords: { lat: 38.6810, lng: 39.2264 } },
+  { city_slug: 'malatya', coords: { lat: 38.3552, lng: 38.3095 } },
 ];
 
 /**

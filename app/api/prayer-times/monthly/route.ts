@@ -106,21 +106,8 @@ export async function GET(request: NextRequest) {
       } catch (error) {
         console.error(`Failed to fetch prayer times for ${date}:`, error);
         
-        // If one day fails, we don't want to break the whole month
-        // Push a placeholder or skip
-        days.push({
-          date,
-          timings: {
-            fajr: '--:--',
-            sunrise: '--:--',
-            dhuhr: '--:--',
-            asr: '--:--',
-            maghrib: '--:--',
-            isha: '--:--',
-          },
-          source: 'error',
-          is_stale: true,
-        });
+        // Skip days with errors - don't add placeholder rows
+        // This prevents empty "--:--" rows in the monthly table
         hasAnyStale = true;
       }
     }

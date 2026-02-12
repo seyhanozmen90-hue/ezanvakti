@@ -207,16 +207,8 @@ export default async function CityPage({ params }: CityPageProps) {
             });
           } catch (dayError) {
             console.error(`Failed to fetch prayer times for ${dateStr}:`, dayError);
-            // On individual day failure, add placeholder
-            monthlyResults.push({
-              date: formatDateForDisplay(dateStr),
-              imsak: '--:--',
-              gunes: '--:--',
-              ogle: '--:--',
-              ikindi: '--:--',
-              aksam: '--:--',
-              yatsi: '--:--',
-            });
+            // Skip days with errors - don't add placeholder rows
+            // This prevents empty "--:--" rows in the monthly table
           }
         }
         
