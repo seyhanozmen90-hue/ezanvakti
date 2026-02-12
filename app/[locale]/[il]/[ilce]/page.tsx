@@ -199,36 +199,51 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
 
       isDbBacked = true;
 
-      // Fetch monthly data from new DB-backed system
+      // Fetch monthly data from DB-backed system (direct service call, not HTTP)
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
         const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-        const monthlyUrl = `${baseUrl}/api/prayer-times/monthly?city=${city.slug}&district=${district.slug}&month=${currentMonth}`;
+        const [year, monthNum] = currentMonth.split('-').map(Number);
+        const daysInMonth = new Date(year, monthNum, 0).getDate();
         
-        const monthlyResponse = await fetch(monthlyUrl, {
-          next: { revalidate: 3600 }, // Cache for 1 hour
-        });
-
-        if (monthlyResponse.ok) {
-          const monthlyData = await monthlyResponse.json();
+        const monthlyResults = [];
+        for (let day = 1; day <= daysInMonth; day++) {
+          const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           
-          // Convert to PrayerTime[] format
-          monthlyTimes = monthlyData.days.map((day: any) => ({
-            date: formatDateForDisplay(day.date),
-            imsak: day.timings.fajr,
-            gunes: day.timings.sunrise,
-            ogle: day.timings.dhuhr,
-            ikindi: day.timings.asr,
-            aksam: day.timings.maghrib,
-            yatsi: day.timings.isha,
-          }));
-        } else {
-          console.warn('Monthly API returned error, using legacy fallback');
-          monthlyTimes = await getMonthlyPrayerTimes(city.id, district.id);
+          try {
+            const dayResult = await getPrayerTimes({
+              city_slug: city.slug,
+              district_slug: district.slug,
+              date: dateStr,
+            });
+            
+            monthlyResults.push({
+              date: formatDateForDisplay(dateStr),
+              imsak: dayResult.timings.fajr,
+              gunes: dayResult.timings.sunrise,
+              ogle: dayResult.timings.dhuhr,
+              ikindi: dayResult.timings.asr,
+              aksam: dayResult.timings.maghrib,
+              yatsi: dayResult.timings.isha,
+            });
+          } catch (dayError) {
+            console.error(`Failed to fetch prayer times for ${dateStr}:`, dayError);
+            // On individual day failure, add placeholder
+            monthlyResults.push({
+              date: formatDateForDisplay(dateStr),
+              imsak: '--:--',
+              gunes: '--:--',
+              ogle: '--:--',
+              ikindi: '--:--',
+              aksam: '--:--',
+              yatsi: '--:--',
+            });
+          }
         }
+        
+        monthlyTimes = monthlyResults;
       } catch (monthlyError) {
-        console.warn('Monthly prayer times fetch failed, using legacy:', monthlyError);
-        // Fallback to legacy
+        console.error('Monthly prayer times generation failed:', monthlyError);
+        // Fallback to legacy only if entire monthly generation fails
         monthlyTimes = await getMonthlyPrayerTimes(city.id, district.id);
       }
     } catch (error) {
