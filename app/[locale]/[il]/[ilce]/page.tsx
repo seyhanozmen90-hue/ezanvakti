@@ -194,7 +194,7 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
         ikindi: serviceResult.timings.asr,
         aksam: serviceResult.timings.maghrib,
         yatsi: serviceResult.timings.isha,
-        date: serviceResult.date,
+        date: formatDateForDisplay(date), // Convert to DD.MM.YYYY for consistency
       };
 
       isDbBacked = true;
@@ -455,20 +455,8 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
 
           {/* Footer */}
           <footer className="mt-10 sm:mt-12 md:mt-16 text-center text-xs sm:text-sm text-navy-900 dark:text-gold-400/70 bg-white dark:bg-navy-darkest/60 backdrop-blur-md rounded-2xl p-5 sm:p-6 md:p-8 border-2 border-gold-500 dark:border-gold-500/20 shadow-lg dark:shadow-none">
-            <p className="mb-2 font-semibold">
-              {tFooter('dataSource')}{' '}
-              <a
-                href="https://www.diyanet.gov.tr"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-navy-900 dark:text-gold-500 hover:text-gold-600 dark:hover:text-gold-400 hover:underline font-bold transition-colors"
-              >
-                {tFooter('dataProvider')}
-              </a>
-              {' '}{tFooter('dataProviderLink')}
-            </p>
             <p className="mb-3 text-xs text-navy-700 dark:text-gold-400/60 italic">
-              ℹ️ Namaz vakitleri, hesaplama yöntemlerine bağlı olarak birkaç dakikalık farklılık gösterebilir. Resmî referans için Diyanet İşleri Başkanlığı esas alınmalıdır.
+              ℹ️ Namaz vakitleri, hesaplama yöntemlerine bağlı olarak birkaç dakikalık farklılık gösterebilir.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 mb-2">
               <a

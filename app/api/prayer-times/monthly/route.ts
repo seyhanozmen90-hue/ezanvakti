@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
         });
 
         days.push({
-          date: result.date,
+          date: date, // Keep YYYY-MM-DD format for consistency
           timings: result.timings,
           source: result.source,
           is_stale: result.is_stale,
