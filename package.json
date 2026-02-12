@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "verify:prayer": "tsx scripts/verify-prayer-times.ts"
+    "verify:prayer": "tsx scripts/verify-prayer-times.ts",
+    "test:prayer": "tsx scripts/test-prayer-times.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
