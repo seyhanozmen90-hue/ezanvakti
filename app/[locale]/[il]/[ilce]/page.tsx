@@ -19,6 +19,14 @@ import { PrayerName, PrayerTime } from '@/lib/types';
 // Force dynamic rendering (SSR) - no static generation
 export const dynamic = 'force-dynamic';
 
+/**
+ * Convert YYYY-MM-DD to DD.MM.YYYY for display
+ */
+function formatDateForDisplay(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-');
+  return `${day}.${month}.${year}`;
+}
+
 interface DistrictPageProps {
   params: {
     locale: string;
@@ -191,13 +199,37 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
 
       isDbBacked = true;
 
-      // Fetch monthly data from old system API (temporary)
-      // TODO: In future, implement monthly fetch from DB-backed system
+      // Fetch monthly data from new DB-backed system
       try {
-        monthlyTimes = await getMonthlyPrayerTimes(city.id, district.id);
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+        const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        const monthlyUrl = `${baseUrl}/api/prayer-times/monthly?city=${city.slug}&district=${district.slug}&month=${currentMonth}`;
+        
+        const monthlyResponse = await fetch(monthlyUrl, {
+          next: { revalidate: 3600 }, // Cache for 1 hour
+        });
+
+        if (monthlyResponse.ok) {
+          const monthlyData = await monthlyResponse.json();
+          
+          // Convert to PrayerTime[] format
+          monthlyTimes = monthlyData.days.map((day: any) => ({
+            date: formatDateForDisplay(day.date),
+            imsak: day.timings.fajr,
+            gunes: day.timings.sunrise,
+            ogle: day.timings.dhuhr,
+            ikindi: day.timings.asr,
+            aksam: day.timings.maghrib,
+            yatsi: day.timings.isha,
+          }));
+        } else {
+          console.warn('Monthly API returned error, using legacy fallback');
+          monthlyTimes = await getMonthlyPrayerTimes(city.id, district.id);
+        }
       } catch (monthlyError) {
-        console.warn('Monthly prayer times fetch failed:', monthlyError);
-        monthlyTimes = [];
+        console.warn('Monthly prayer times fetch failed, using legacy:', monthlyError);
+        // Fallback to legacy
+        monthlyTimes = await getMonthlyPrayerTimes(city.id, district.id);
       }
     } catch (error) {
       console.error('DB-backed prayer times failed for district:', error);
