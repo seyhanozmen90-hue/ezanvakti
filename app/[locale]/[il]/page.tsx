@@ -181,41 +181,29 @@ export default async function CityPage({ params }: CityPageProps) {
 
       isDbBacked = true;
 
-      // Fetch monthly data from DB-backed system (direct service call, not HTTP)
+      // Fetch monthly data using fast Aladhan calendarByCity endpoint
       try {
         const [year, monthNum] = currentMonth.split('-').map(Number);
-        const daysInMonth = new Date(year, monthNum, 0).getDate();
         
-        const monthlyResults = [];
-        for (let day = 1; day <= daysInMonth; day++) {
-          const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          
-          try {
-            const dayResult = await getPrayerTimes({
-              city_slug: city.slug,
-              date: dateStr,
-            });
-            
-            monthlyResults.push({
-              date: formatDateForDisplay(dateStr),
-              imsak: dayResult.timings.fajr,
-              gunes: dayResult.timings.sunrise,
-              ogle: dayResult.timings.dhuhr,
-              ikindi: dayResult.timings.asr,
-              aksam: dayResult.timings.maghrib,
-              yatsi: dayResult.timings.isha,
-            });
-          } catch (dayError) {
-            console.error(`Failed to fetch prayer times for ${dateStr}:`, dayError);
-            // Skip days with errors - don't add placeholder rows
-            // This prevents empty "--:--" rows in the monthly table
-          }
-        }
+        // Import monthly fetcher dynamically
+        const { fetchMonthlyPrayerTimes } = await import('@/lib/providers/aladhan-monthly');
         
-        monthlyTimes = monthlyResults;
+        const monthlyData = await fetchMonthlyPrayerTimes(city.slug, year, monthNum);
+        
+        monthlyTimes = monthlyData.map(day => ({
+          date: formatDateForDisplay(day.date),
+          imsak: day.timings.fajr,
+          gunes: day.timings.sunrise,
+          ogle: day.timings.dhuhr,
+          ikindi: day.timings.asr,
+          aksam: day.timings.maghrib,
+          yatsi: day.timings.isha,
+        }));
+        
+        console.log(`✅ Loaded ${monthlyTimes.length} days for ${city.name} from Aladhan calendar`);
       } catch (monthlyError) {
-        console.error('Monthly prayer times generation failed:', monthlyError);
-        // Fallback to legacy only if entire monthly generation fails
+        console.error('Aladhan monthly fetch failed, using legacy:', monthlyError);
+        // Fallback to legacy only if Aladhan fails
         monthlyTimes = await getMonthlyPrayerTimes(city.id);
       }
     } catch (error) {

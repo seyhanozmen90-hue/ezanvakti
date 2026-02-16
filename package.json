@@ -9,7 +9,8 @@
     "lint": "next lint",
     "verify:prayer": "tsx scripts/verify-prayer-times.ts",
     "test:prayer": "tsx scripts/test-prayer-times.ts",
-    "smoke:monthly": "tsx scripts/smoke-monthly.ts"
+    "smoke:monthly": "tsx scripts/smoke-monthly.ts",
+    "test:aladhan": "tsx scripts/test-aladhan-monthly.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
