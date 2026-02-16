@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { GoogleAnalytics } from '@next/third-parties/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
@@ -111,6 +112,10 @@ export default async function LocaleLayout({
             <InstallPWA />
           </div>
         </NextIntlClientProvider>
+        {/* Google Analytics - Only in production */}
+        {process.env.NODE_ENV === 'production' && (
+          <GoogleAnalytics gaId="G-VK3ZVGZYJS" />
+        )}
       </body>
     </html>
   );
