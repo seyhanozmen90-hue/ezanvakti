@@ -23,7 +23,9 @@ export interface PrayerTime {
   aksam: string;
   yatsi: string;
   date: string;
-  hijriDate?: string;
+  hijriDate?: string; // Legacy format
+  hijriDateShort?: string; // "15 8 1447" format
+  hijriDateLong?: string; // "15 Şaban 1447" format (Türkçe)
 }
 
 export interface DailyPrayerTimes {

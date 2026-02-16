@@ -165,9 +165,9 @@ export default function MonthlyTable({ times, locale, cityName }: MonthlyTablePr
                       </div>
                       
                       {/* Hicri tarih - altında küçük */}
-                      {time.hijriDate && (
+                      {(time.hijriDateLong || time.hijriDate) && (
                         <div className="text-[10px] text-navy-600 dark:text-gold-400/50 mt-0.5">
-                          {formatHijriDate(time.hijriDate)}
+                          {time.hijriDateLong || formatHijriDate(time.hijriDate!)}
                         </div>
                       )}
                     </td>

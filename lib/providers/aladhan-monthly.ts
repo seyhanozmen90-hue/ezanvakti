@@ -121,6 +121,8 @@ function parseAladhanDate(dateStr: string): string {
 export interface MonthlyDayData {
   date: string; // ISO format: YYYY-MM-DD
   timings: ProviderTimings;
+  hijri_date_short?: string;
+  hijri_date_long?: string;
 }
 
 interface AladhanCalendarResponse {
@@ -139,8 +141,44 @@ interface AladhanCalendarResponse {
       gregorian: {
         date: string; // DD-MM-YYYY
       };
+      hijri: {
+        day: string;
+        month: {
+          number: number;
+          en: string;
+          ar: string;
+        };
+        year: string;
+      };
     };
   }>;
+}
+
+/**
+ * Hijri month names in Turkish
+ */
+const HIJRI_MONTHS_TR: Record<number, string> = {
+  1: 'Muharrem',
+  2: 'Safer',
+  3: 'Rebiülevvel',
+  4: 'Rebiülahir',
+  5: 'Cemaziyelevvel',
+  6: 'Cemaziyelahir',
+  7: 'Recep',
+  8: 'Şaban',
+  9: 'Ramazan',
+  10: 'Şevval',
+  11: 'Zilkade',
+  12: 'Zilhicce',
+};
+
+/**
+ * Format Hijri date to Turkish
+ * Example: {day: "15", month: {number: 8}, year: "1447"} → "15 Şaban 1447"
+ */
+function formatHijriTurkish(hijri: any): string {
+  const monthName = HIJRI_MONTHS_TR[hijri.month.number] ?? hijri.month.en;
+  return `${hijri.day} ${monthName} ${hijri.year}`;
 }
 
 /**
@@ -192,7 +230,7 @@ export async function fetchMonthlyPrayerTimes(
     
     console.log(`✅ Received ${json.data.length} days from Aladhan for ${cityName}`);
     
-    // Map to our format
+    // Map to our format with Hijri dates
     return json.data.map((day) => ({
       date: parseAladhanDate(day.date.gregorian.date),
       timings: {
@@ -203,6 +241,8 @@ export async function fetchMonthlyPrayerTimes(
         maghrib: stripTimezone(day.timings.Maghrib),
         isha: stripTimezone(day.timings.Isha),
       },
+      hijri_date_short: `${day.date.hijri.day} ${day.date.hijri.month.number} ${day.date.hijri.year}`,
+      hijri_date_long: formatHijriTurkish(day.date.hijri),
     }));
   } catch (error) {
     if (error instanceof Error) {

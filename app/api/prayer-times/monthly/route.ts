@@ -1,33 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPrayerTimes } from '@/lib/services/prayerTimesService';
+import { fetchMonthlyPrayerTimes } from '@/lib/providers/aladhan-monthly';
+import { createClient } from '@/lib/supabase/server';
 
 // Force dynamic rendering (no static generation)
 export const dynamic = 'force-dynamic';
 
 /**
- * Monthly prayer times API endpoint
+ * Monthly prayer times API endpoint with Supabase caching
  * 
- * Returns a full month of prayer times using the same source as daily endpoint
- * (DB-backed with Aladhan provider, with fallback to stale data)
+ * Returns a full month of prayer times using calendarByCity endpoint
+ * with Supabase cache for faster responses
  * 
  * Query params:
  * - city: City slug (required, e.g., 'izmir', 'istanbul')
- * - district: District slug (optional, e.g., 'bornova', 'karsiyaka')
+ * - district: District slug (optional - NOT SUPPORTED for monthly, city-level only)
  * - month: Month in YYYY-MM format (optional, defaults to current month in Europe/Istanbul)
  * 
  * Response:
  * {
  *   city: string,
- *   district: string | null,
  *   month: string,
  *   timezone: string,
- *   source: 'aladhan' | 'diyanet',
- *   is_stale: boolean,
+ *   source: 'cache' | 'aladhan',
  *   days: Array<{
  *     date: string,
  *     timings: { fajr, sunrise, dhuhr, asr, maghrib, isha },
- *     source: string,
- *     is_stale: boolean
+ *     hijri_date_short: string,
+ *     hijri_date_long: string
  *   }>
  * }
  */
@@ -42,6 +41,14 @@ export async function GET(request: NextRequest) {
     if (!city) {
       return NextResponse.json(
         { error: 'city parameter is required' },
+        { status: 400 }
+      );
+    }
+
+    // District not supported for monthly (city-level only)
+    if (district) {
+      return NextResponse.json(
+        { error: 'district parameter not supported for monthly endpoint (city-level only)' },
         { status: 400 }
       );
     }
@@ -69,62 +76,113 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate start and end dates
-    const startDate = new Date(year, monthNum - 1, 1);
-    const endDate = new Date(year, monthNum, 0); // Last day of month
-    const daysInMonth = endDate.getDate();
+    const startDate = `${year}-${String(monthNum).padStart(2, '0')}-01`;
+    const endDate = `${year}-${String(monthNum).padStart(2, '0')}-${new Date(year, monthNum, 0).getDate()}`;
 
-    // Fetch prayer times for each day
-    const days = [];
-    let overallSource = 'aladhan';
-    let hasAnyStale = false;
+    let days = [];
+    let source = 'aladhan';
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    // STEP 1: Try Supabase cache first
+    try {
+      const supabase = createClient();
+      
+      const { data: cachedData, error } = await supabase
+        .from('prayer_times')
+        .select('*')
+        .eq('city_slug', city)
+        .is('district_slug', null) // City-level only
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', { ascending: true });
 
-      try {
-        const result = await getPrayerTimes({
-          city_slug: city,
-          district_slug: district || undefined,
-          date,
-        });
-
-        days.push({
-          date: date, // Keep YYYY-MM-DD format for consistency
-          timings: result.timings,
-          source: result.source,
-          is_stale: result.is_stale,
-        });
-
-        // Track overall source (use first day's source)
-        if (day === 1) {
-          overallSource = result.source;
-        }
-
-        if (result.is_stale) {
-          hasAnyStale = true;
-        }
-      } catch (error) {
-        console.error(`Failed to fetch prayer times for ${date}:`, error);
+      if (error) {
+        console.warn('Supabase query error:', error);
+      } else if (cachedData && cachedData.length >= 25) {
+        // Cache hit! Return cached data
+        console.log(`✅ Supabase cache HIT for ${city} ${month}: ${cachedData.length} days`);
         
-        // Skip days with errors - don't add placeholder rows
-        // This prevents empty "--:--" rows in the monthly table
-        hasAnyStale = true;
+        days = cachedData.map(row => ({
+          date: row.date,
+          timings: {
+            fajr: row.fajr,
+            sunrise: row.sunrise,
+            dhuhr: row.dhuhr,
+            asr: row.asr,
+            maghrib: row.maghrib,
+            isha: row.isha,
+          },
+          hijri_date_short: row.hijri_date_short || '',
+          hijri_date_long: row.hijri_date_long || '',
+        }));
+        
+        source = 'cache';
+      } else {
+        console.log(`🔍 Supabase cache MISS for ${city} ${month}: only ${cachedData?.length || 0} days, fetching from Aladhan`);
+      }
+    } catch (cacheError) {
+      console.warn('Supabase cache check failed:', cacheError);
+    }
+
+    // STEP 2: If cache miss, fetch from Aladhan
+    if (source !== 'cache') {
+      const monthlyData = await fetchMonthlyPrayerTimes(city, year, monthNum);
+      
+      days = monthlyData.map(day => ({
+        date: day.date,
+        timings: day.timings,
+        hijri_date_short: day.hijri_date_short || '',
+        hijri_date_long: day.hijri_date_long || '',
+      }));
+
+      // STEP 3: Save to Supabase for future requests
+      try {
+        const supabase = createClient();
+        
+        const rowsToInsert = monthlyData.map(day => ({
+          city_slug: city,
+          district_slug: null,
+          date: day.date,
+          fajr: day.timings.fajr,
+          sunrise: day.timings.sunrise,
+          dhuhr: day.timings.dhuhr,
+          asr: day.timings.asr,
+          maghrib: day.timings.maghrib,
+          isha: day.timings.isha,
+          hijri_date_short: day.hijri_date_short,
+          hijri_date_long: day.hijri_date_long,
+          timezone: 'Europe/Istanbul',
+          source: 'aladhan',
+        }));
+
+        const { error: upsertError } = await supabase
+          .from('prayer_times')
+          .upsert(rowsToInsert, {
+            onConflict: 'city_slug,district_slug,date',
+          });
+
+        if (upsertError) {
+          console.error('Supabase upsert error:', upsertError);
+          // Don't fail the request, just log the error
+        } else {
+          console.log(`💾 Saved ${rowsToInsert.length} days to Supabase for ${city} ${month}`);
+        }
+      } catch (saveError) {
+        console.error('Supabase save failed:', saveError);
+        // Don't fail the request
       }
     }
 
     // Return with cache headers
     const response = NextResponse.json({
       city,
-      district: district || null,
       month,
       timezone: 'Europe/Istanbul',
-      source: overallSource,
-      is_stale: hasAnyStale,
+      source,
       days,
     });
 
-    // Cache for 1 hour if not stale, 5 minutes if stale
-    const maxAge = hasAnyStale ? 300 : 3600;
+    // Cache for 24 hours if from cache, 1 hour if from Aladhan
+    const maxAge = source === 'cache' ? 86400 : 3600;
     response.headers.set(
       'Cache-Control',
       `public, s-maxage=${maxAge}, stale-while-revalidate=${maxAge * 2}`
@@ -136,13 +194,40 @@ export async function GET(request: NextRequest) {
 
     const message = error instanceof Error ? error.message : 'Unknown error';
 
-    return NextResponse.json(
-      {
-        error: 'Failed to fetch monthly prayer times',
-        details: message,
-      },
-      { status: 500 }
-    );
+    // On total failure, try to return from Aladhan directly (bypass Supabase)
+    try {
+      const searchParams = request.nextUrl.searchParams;
+      const city = searchParams.get('city') || 'istanbul';
+      const monthParam = searchParams.get('month');
+      const month = monthParam || getCurrentMonthInIstanbul();
+      const [year, monthNum] = month.split('-').map(Number);
+
+      console.log('🚨 Attempting direct Aladhan fallback...');
+      const monthlyData = await fetchMonthlyPrayerTimes(city, year, monthNum);
+      
+      const days = monthlyData.map(day => ({
+        date: day.date,
+        timings: day.timings,
+        hijri_date_short: day.hijri_date_short || '',
+        hijri_date_long: day.hijri_date_long || '',
+      }));
+
+      return NextResponse.json({
+        city,
+        month,
+        timezone: 'Europe/Istanbul',
+        source: 'aladhan-fallback',
+        days,
+      });
+    } catch (fallbackError) {
+      return NextResponse.json(
+        {
+          error: 'Failed to fetch monthly prayer times',
+          details: message,
+        },
+        { status: 500 }
+      );
+    }
   }
 }
 

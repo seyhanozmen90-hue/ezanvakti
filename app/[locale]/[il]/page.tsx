@@ -198,6 +198,8 @@ export default async function CityPage({ params }: CityPageProps) {
           ikindi: day.timings.asr,
           aksam: day.timings.maghrib,
           yatsi: day.timings.isha,
+          hijriDateShort: day.hijri_date_short || '',
+          hijriDateLong: day.hijri_date_long || '',
         }));
         
         console.log(`✅ Loaded ${monthlyTimes.length} days for ${city.name} from Aladhan calendar`);

@@ -1,4 +1,4 @@
--- Prayer times table for Supabase (Minimal version)
+-- Prayer times table for Supabase (with Hijri dates)
 -- Run this in Supabase SQL Editor
 
 -- Create prayer_times table
@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS public.prayer_times (
   asr TEXT NOT NULL,
   maghrib TEXT NOT NULL,
   isha TEXT NOT NULL,
+  hijri_date_short TEXT NULL,
+  hijri_date_long TEXT NULL,
   timezone TEXT NOT NULL DEFAULT 'Europe/Istanbul',
   source TEXT NOT NULL DEFAULT 'aladhan',
   fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
