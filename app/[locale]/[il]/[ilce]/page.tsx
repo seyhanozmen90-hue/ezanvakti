@@ -87,32 +87,30 @@ export async function generateMetadata({ params }: DistrictPageProps): Promise<M
     'diyanet namaz vakitleri',
   ];
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ezanvakti.com';
-  const url = `${baseUrl}/${city.slug}/${district.slug}`;
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
+  const url = `${baseUrl}/tr/${city.slug}/${district.slug}`;
+  const currentYear = new Date().getFullYear();
 
   // SEO Config: İlçenin index edilip edilmeyeceğini kontrol et
   const shouldIndex = isDistrictIndexed(city.slug, district.slug);
 
   return {
-    title,
-    description,
+    title: `${city.name} ${district.name} Namaz Vakitleri ${currentYear} | Diyanet Onaylı`,
+    description: `${city.name} ${district.name} namaz vakitleri ${currentYear}. Güncel imsak, öğle, ikindi, akşam, yatsı saatleri. ${district.name} ilçesi için Diyanet onaylı ezan vakitleri ve aylık takvim.`,
     keywords: keywords.join(', '),
     authors: [{ name: 'Ezan Vakitleri' }],
     creator: 'Ezan Vakitleri',
     publisher: 'Ezan Vakitleri',
-    // Canonical URL sadece index edilen sayfalar için
-    ...(shouldIndex && {
-      alternates: {
-        canonical: url,
-      },
-    }),
+    alternates: {
+      canonical: url,
+    },
     openGraph: {
       type: 'website',
-      locale: params.locale,
+      locale: params.locale === 'tr' ? 'tr_TR' : params.locale,
       url,
-      title,
-      description,
-      siteName: 'Ezan Vakitleri',
+      title: `${city.name} ${district.name} Namaz Vakitleri ${currentYear}`,
+      description: `${city.name} ${district.name} için güncel namaz vakitleri ve aylık takvim.`,
+      siteName: 'EzanVakti.site',
       images: [
         {
           url: `${baseUrl}/icon-512x512.png`,
@@ -124,8 +122,8 @@ export async function generateMetadata({ params }: DistrictPageProps): Promise<M
     },
     twitter: {
       card: 'summary',
-      title,
-      description,
+      title: `${city.name} ${district.name} Namaz Vakitleri ${currentYear}`,
+      description: `${city.name} ${district.name} için güncel namaz vakitleri`,
       images: [`${baseUrl}/icon-512x512.png`],
     },
     // NOINDEX kontrolü: seo.config.ts'deki ayara göre

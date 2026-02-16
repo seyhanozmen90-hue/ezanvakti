@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 import { getAllCityDistrictCombinations } from '@/lib/cities-helper';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://ezanvakti.com';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
   const combinations = getAllCityDistrictCombinations();
 
   const routes: MetadataRoute.Sitemap = [
@@ -22,17 +22,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     if (!district) {
       // Şehir ana sayfası
       routes.push({
-        url: `${baseUrl}/${city.slug}`,
+        url: `${baseUrl}/tr/${city.slug}`,
         lastModified: new Date(),
-        changeFrequency: 'hourly',
+        changeFrequency: 'daily',
         priority: 0.9,
       });
     } else {
       // İlçe sayfası
       routes.push({
-        url: `${baseUrl}/${city.slug}/${district.slug}`,
+        url: `${baseUrl}/tr/${city.slug}/${district.slug}`,
         lastModified: new Date(),
-        changeFrequency: 'hourly',
+        changeFrequency: 'daily',
         priority: 0.8,
       });
     }

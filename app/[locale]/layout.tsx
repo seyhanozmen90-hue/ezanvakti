@@ -16,19 +16,37 @@ export async function generateMetadata({
   params: { locale: string };
 }): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: 'site' });
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
 
   return {
-    title: `${t('title')} | ${t('subtitle')}`,
+    metadataBase: new URL(baseUrl),
+    title: {
+      default: `${t('title')} | ${t('subtitle')}`,
+      template: `%s | ${t('title')}`,
+    },
     description: t('description'),
-    keywords: 'ezan vakitleri, namaz vakitleri, ezan saati, İstanbul ezan vakitleri, Ankara ezan vakitleri, diyanet namaz vakitleri',
+    keywords: 'ezan vakitleri, namaz vakitleri, ezan saati, İstanbul ezan vakitleri, Ankara ezan vakitleri, diyanet namaz vakitleri, 2026 namaz vakitleri',
     authors: [{ name: t('title') }],
     creator: t('title'),
     publisher: t('title'),
-    robots: 'index, follow',
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
+    alternates: {
+      canonical: baseUrl,
+    },
     openGraph: {
       type: 'website',
       locale: locale === 'tr' ? 'tr_TR' : locale,
-      url: 'https://ezanvakti.com',
+      url: baseUrl,
       siteName: t('title'),
       title: `${t('title')} | ${t('subtitle')}`,
       description: t('description'),

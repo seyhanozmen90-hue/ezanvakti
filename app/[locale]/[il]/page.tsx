@@ -84,12 +84,13 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
     'aylık vakit cetveli',
   ];
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ezanvakti.com';
-  const url = `${baseUrl}/${city.slug}`;
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
+  const url = `${baseUrl}/tr/${city.slug}`;
+  const currentYear = new Date().getFullYear();
 
   return {
-    title,
-    description,
+    title: `${city.name} Namaz Vakitleri ${currentYear} | Diyanet Onaylı Ezan Saatleri`,
+    description: `${city.name} namaz vakitleri ${currentYear}. Güncel imsak, güneş, öğle, ikindi, akşam, yatsı saatleri. Diyanet İşleri Başkanlığı onaylı ${city.name} ezan vakitleri ve aylık takvim.`,
     keywords: keywords.join(', '),
     authors: [{ name: 'Ezan Vakitleri' }],
     creator: 'Ezan Vakitleri',
@@ -99,11 +100,11 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
     },
     openGraph: {
       type: 'website',
-      locale: params.locale,
+      locale: params.locale === 'tr' ? 'tr_TR' : params.locale,
       url,
-      title,
-      description,
-      siteName: 'Ezan Vakitleri',
+      title: `${city.name} Namaz Vakitleri ${currentYear}`,
+      description: `${city.name} için güncel namaz vakitleri. İmsak, öğle, ikindi, akşam, yatsı saatleri ve aylık takvim.`,
+      siteName: 'EzanVakti.site',
       images: [
         {
           url: `${baseUrl}/icon-512x512.png`,
@@ -115,8 +116,8 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
     },
     twitter: {
       card: 'summary',
-      title,
-      description,
+      title: `${city.name} Namaz Vakitleri ${currentYear}`,
+      description: `${city.name} için güncel namaz vakitleri`,
       images: [`${baseUrl}/icon-512x512.png`],
     },
     // Şehir sayfaları HER ZAMAN INDEX edilir
@@ -239,7 +240,7 @@ export default async function CityPage({ params }: CityPageProps) {
   const currentDate = new Date();
 
   // JSON-LD Structured Data - Daha detaylı namaz vakitleri schema
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ezanvakti.com';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
   const todayDateString = new Date().toISOString().split('T')[0];
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -247,7 +248,7 @@ export default async function CityPage({ params }: CityPageProps) {
     name: 'Ezan Vakitleri',
     alternateName: 'Namaz Vakitleri',
     description: `${city.name} ve Türkiye'nin tüm illeri için güncel, doğru ve Diyanet onaylı namaz vakitleri`,
-    url: baseUrl,
+    url: `${baseUrl}/tr/${city.slug}`,
     inLanguage: 'tr-TR',
     potentialAction: {
       '@type': 'SearchAction',
@@ -341,13 +342,13 @@ export default async function CityPage({ params }: CityPageProps) {
           '@type': 'ListItem',
           position: 1,
           name: 'Ana Sayfa',
-          item: baseUrl,
+          item: `${baseUrl}/tr`,
         },
         {
           '@type': 'ListItem',
           position: 2,
-          name: city.name,
-          item: `${baseUrl}/${city.slug}`,
+          name: `${city.name} Namaz Vakitleri`,
+          item: `${baseUrl}/tr/${city.slug}`,
         },
       ],
     },
