@@ -1,13 +1,4 @@
-import { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Çevrimdışı | Ezan Vakitleri',
-  description: 'İnternet bağlantısı kesildi. Daha önce görüntülediğiniz namaz vakitleri cache\'de mevcut.',
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
+'use client';
 
 export default function OfflinePage() {
   return (
@@ -24,7 +15,7 @@ export default function OfflinePage() {
         {/* Description */}
         <p className="text-gray-600 dark:text-gray-400 mb-6 text-lg">
           Bağlantı kesildi. Daha önce görüntülediğiniz namaz vakitleri 
-          tarayıcınızın cache'inde saklanmıştır.
+          tarayıcınızın cache&apos;inde saklanmıştır.
         </p>
         
         {/* Info Box */}

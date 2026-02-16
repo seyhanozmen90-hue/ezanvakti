@@ -96,15 +96,15 @@ export default function InstallPWA() {
             <ol className="space-y-3 text-sm text-gray-700 dark:text-gray-300 mb-6">
               <li className="flex items-start gap-3">
                 <span className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full flex items-center justify-center font-bold text-xs">1</span>
-                <span>Safari'nin altındaki <strong>Paylaş</strong> butonuna dokun <span className="text-xl">⬆️</span></span>
+                <span>Safari&apos;nin altındaki <strong>Paylaş</strong> butonuna dokun <span className="text-xl">⬆️</span></span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full flex items-center justify-center font-bold text-xs">2</span>
-                <span>Menüde <strong>"Ana Ekrana Ekle"</strong> seçeneğini bul</span>
+                <span>Menüde <strong>&quot;Ana Ekrana Ekle&quot;</strong> seçeneğini bul</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full flex items-center justify-center font-bold text-xs">3</span>
-                <span>Sağ üstteki <strong>"Ekle"</strong> butonuna dokun</span>
+                <span>Sağ üstteki <strong>&quot;Ekle&quot;</strong> butonuna dokun</span>
               </li>
             </ol>
             <button

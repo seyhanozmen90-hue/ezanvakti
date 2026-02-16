@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchMonthlyPrayerTimes } from '@/lib/providers/aladhan-monthly';
-import { createClient } from '@/lib/supabase/server';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 // Force dynamic rendering (no static generation)
 export const dynamic = 'force-dynamic';
@@ -79,12 +79,24 @@ export async function GET(request: NextRequest) {
     const startDate = `${year}-${String(monthNum).padStart(2, '0')}-01`;
     const endDate = `${year}-${String(monthNum).padStart(2, '0')}-${new Date(year, monthNum, 0).getDate()}`;
 
-    let days = [];
-    let source = 'aladhan';
+    let days: Array<{
+      date: string;
+      timings: {
+        fajr: string;
+        sunrise: string;
+        dhuhr: string;
+        asr: string;
+        maghrib: string;
+        isha: string;
+      };
+      hijri_date_short: string;
+      hijri_date_long: string;
+    }> = [];
+    let source: 'aladhan' | 'cache' | 'aladhan-fallback' = 'aladhan';
 
     // STEP 1: Try Supabase cache first
     try {
-      const supabase = createClient();
+      const supabase = getSupabaseServerClient();
       
       const { data: cachedData, error } = await supabase
         .from('prayer_times')
@@ -136,7 +148,7 @@ export async function GET(request: NextRequest) {
 
       // STEP 3: Save to Supabase for future requests
       try {
-        const supabase = createClient();
+        const supabase = getSupabaseServerClient();
         
         const rowsToInsert = monthlyData.map(day => ({
           city_slug: city,
