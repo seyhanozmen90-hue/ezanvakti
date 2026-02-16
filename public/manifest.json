@@ -1,27 +1,60 @@
 {
-  "name": "Ezan Vakitleri - Türkiye Namaz Vakitleri",
-  "short_name": "Ezan Vakitleri",
-  "description": "Türkiye'nin tüm illeri ve ilçeleri için güncel ezan vakitleri",
-  "start_url": "/",
+  "name": "Ezan Vakitleri - Türkiye Namaz Saatleri 2026",
+  "short_name": "EzanVakti",
+  "description": "Türkiye'nin 81 ili için güncel, Diyanet onaylı namaz vakitleri. Offline çalışır.",
+  "start_url": "/tr/istanbul",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0ea5e9",
-  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#1e3a5f",
+  "orientation": "portrait-primary",
+  "lang": "tr",
+  "dir": "ltr",
+  "categories": ["lifestyle", "religion", "utilities"],
   "icons": [
     {
       "src": "/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable any"
     },
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
-  "categories": ["lifestyle", "utilities"],
-  "lang": "tr",
-  "dir": "ltr"
+  "shortcuts": [
+    {
+      "name": "İstanbul Namaz Vakitleri",
+      "short_name": "İstanbul",
+      "description": "İstanbul için güncel namaz vakitleri",
+      "url": "/tr/istanbul",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ankara Namaz Vakitleri",
+      "short_name": "Ankara",
+      "description": "Ankara için güncel namaz vakitleri",
+      "url": "/tr/ankara",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "İzmir Namaz Vakitleri",
+      "short_name": "İzmir",
+      "description": "İzmir için güncel namaz vakitleri",
+      "url": "/tr/izmir",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
 }

@@ -5,6 +5,7 @@ import { getMessages, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { locales } from '@/i18n';
 import NavigationTabs from '@/components/NavigationTabs';
+import InstallPWA from '@/components/InstallPWA';
 import '../globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -62,13 +63,21 @@ export async function generateMetadata({
       maximumScale: 5,
     },
     themeColor: [
-      { media: '(prefers-color-scheme: light)', color: '#0ea5e9' },
-      { media: '(prefers-color-scheme: dark)', color: '#0c4a6e' },
+      { media: '(prefers-color-scheme: light)', color: '#1e3a5f' },
+      { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
     ],
     manifest: '/manifest.json',
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'black-translucent',
+      title: 'EzanVakti',
+    },
+    formatDetection: {
+      telephone: false,
+    },
     icons: {
       icon: '/icon.png',
-      apple: '/apple-icon.png',
+      apple: '/icon.png',
     },
   };
 }
@@ -99,6 +108,7 @@ export default async function LocaleLayout({
           <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 overflow-x-hidden">
             <NavigationTabs />
             {children}
+            <InstallPWA />
           </div>
         </NextIntlClientProvider>
       </body>
