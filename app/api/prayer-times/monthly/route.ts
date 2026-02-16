@@ -12,9 +12,9 @@ export const dynamic = 'force-dynamic';
  * with Supabase cache for faster responses
  * 
  * Query params:
- * - city: City slug (required, e.g., 'izmir', 'istanbul')
- * - district: District slug (optional - NOT SUPPORTED for monthly, city-level only)
- * - month: Month in YYYY-MM format (optional, defaults to current month in Europe/Istanbul)
+ * - citySlug: City slug (required, e.g., 'izmir', 'istanbul')
+ * - month: Month number 1-12 (required)
+ * - year: Year (required, e.g., 2026)
  * 
  * Response:
  * {
@@ -33,44 +33,39 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const city = searchParams.get('city');
-    const district = searchParams.get('district');
+    const citySlug = searchParams.get('citySlug');
     const monthParam = searchParams.get('month');
+    const yearParam = searchParams.get('year');
 
     // Validation
-    if (!city) {
+    if (!citySlug) {
       return NextResponse.json(
-        { error: 'city parameter is required' },
+        { error: 'citySlug parameter is required' },
         { status: 400 }
       );
     }
 
-    // District not supported for monthly (city-level only)
-    if (district) {
+    if (!monthParam || !yearParam) {
       return NextResponse.json(
-        { error: 'district parameter not supported for monthly endpoint (city-level only)' },
+        { error: 'month and year parameters are required' },
         { status: 400 }
       );
     }
 
-    // Default to current month in Europe/Istanbul timezone
-    const month = monthParam || getCurrentMonthInIstanbul();
+    // Parse and validate month/year
+    const monthNum = parseInt(monthParam, 10);
+    const year = parseInt(yearParam, 10);
 
-    // Validate month format (YYYY-MM)
-    if (!/^\d{4}-\d{2}$/.test(month)) {
+    if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
       return NextResponse.json(
-        { error: 'month must be in YYYY-MM format' },
+        { error: 'month must be between 1 and 12' },
         { status: 400 }
       );
     }
 
-    // Parse month
-    const [year, monthNum] = month.split('-').map(Number);
-    
-    // Validate month number
-    if (monthNum < 1 || monthNum > 12) {
+    if (isNaN(year) || year < 2000 || year > 2100) {
       return NextResponse.json(
-        { error: 'month must be between 01 and 12' },
+        { error: 'year must be between 2000 and 2100' },
         { status: 400 }
       );
     }
@@ -78,6 +73,7 @@ export async function GET(request: NextRequest) {
     // Calculate start and end dates
     const startDate = `${year}-${String(monthNum).padStart(2, '0')}-01`;
     const endDate = `${year}-${String(monthNum).padStart(2, '0')}-${new Date(year, monthNum, 0).getDate()}`;
+    const monthString = `${year}-${String(monthNum).padStart(2, '0')}`;
 
     let days: Array<{
       date: string;
@@ -101,7 +97,7 @@ export async function GET(request: NextRequest) {
       const { data: cachedData, error } = await supabase
         .from('prayer_times')
         .select('*')
-        .eq('city_slug', city)
+        .eq('city_slug', citySlug)
         .is('district_slug', null) // City-level only
         .gte('date', startDate)
         .lte('date', endDate)
@@ -111,7 +107,7 @@ export async function GET(request: NextRequest) {
         console.warn('Supabase query error:', error);
       } else if (cachedData && cachedData.length >= 25) {
         // Cache hit! Return cached data
-        console.log(`✅ Supabase cache HIT for ${city} ${month}: ${cachedData.length} days`);
+        console.log(`✅ Supabase cache HIT for ${citySlug} ${monthString}: ${cachedData.length} days`);
         
         days = cachedData.map(row => ({
           date: row.date,
@@ -129,7 +125,7 @@ export async function GET(request: NextRequest) {
         
         source = 'cache';
       } else {
-        console.log(`🔍 Supabase cache MISS for ${city} ${month}: only ${cachedData?.length || 0} days, fetching from Aladhan`);
+        console.log(`🔍 Supabase cache MISS for ${citySlug} ${monthString}: only ${cachedData?.length || 0} days, fetching from Aladhan`);
       }
     } catch (cacheError) {
       console.warn('Supabase cache check failed:', cacheError);
@@ -137,7 +133,7 @@ export async function GET(request: NextRequest) {
 
     // STEP 2: If cache miss, fetch from Aladhan
     if (source !== 'cache') {
-      const monthlyData = await fetchMonthlyPrayerTimes(city, year, monthNum);
+      const monthlyData = await fetchMonthlyPrayerTimes(citySlug, year, monthNum);
       
       days = monthlyData.map(day => ({
         date: day.date,
@@ -151,7 +147,7 @@ export async function GET(request: NextRequest) {
         const supabase = getSupabaseServerClient();
         
         const rowsToInsert = monthlyData.map(day => ({
-          city_slug: city,
+          city_slug: citySlug,
           district_slug: null,
           date: day.date,
           fajr: day.timings.fajr,
@@ -176,7 +172,7 @@ export async function GET(request: NextRequest) {
           console.error('Supabase upsert error:', upsertError);
           // Don't fail the request, just log the error
         } else {
-          console.log(`💾 Saved ${rowsToInsert.length} days to Supabase for ${city} ${month}`);
+          console.log(`💾 Saved ${rowsToInsert.length} days to Supabase for ${citySlug} ${monthString}`);
         }
       } catch (saveError) {
         console.error('Supabase save failed:', saveError);
@@ -186,8 +182,8 @@ export async function GET(request: NextRequest) {
 
     // Return with cache headers
     const response = NextResponse.json({
-      city,
-      month,
+      city: citySlug,
+      month: monthString,
       timezone: 'Europe/Istanbul',
       source,
       days,
@@ -209,13 +205,16 @@ export async function GET(request: NextRequest) {
     // On total failure, try to return from Aladhan directly (bypass Supabase)
     try {
       const searchParams = request.nextUrl.searchParams;
-      const city = searchParams.get('city') || 'istanbul';
+      const citySlug = searchParams.get('citySlug') || 'istanbul';
       const monthParam = searchParams.get('month');
-      const month = monthParam || getCurrentMonthInIstanbul();
-      const [year, monthNum] = month.split('-').map(Number);
+      const yearParam = searchParams.get('year');
+      
+      const monthNum = monthParam ? parseInt(monthParam, 10) : new Date().getMonth() + 1;
+      const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
+      const monthString = `${year}-${String(monthNum).padStart(2, '0')}`;
 
       console.log('🚨 Attempting direct Aladhan fallback...');
-      const monthlyData = await fetchMonthlyPrayerTimes(city, year, monthNum);
+      const monthlyData = await fetchMonthlyPrayerTimes(citySlug, year, monthNum);
       
       const days = monthlyData.map(day => ({
         date: day.date,
@@ -225,8 +224,8 @@ export async function GET(request: NextRequest) {
       }));
 
       return NextResponse.json({
-        city,
-        month,
+        city: citySlug,
+        month: monthString,
         timezone: 'Europe/Istanbul',
         source: 'aladhan-fallback',
         days,
