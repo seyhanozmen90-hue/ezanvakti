@@ -38,9 +38,9 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   const KAABA_LAT = 21.4225;
   const KAABA_LON = 39.8262;
   const ENTER_THRESHOLD = 8;   // ±8° içinde hizalandı say
-  const EXIT_THRESHOLD = 15;   // ±15° dışında hizalamayı boz
-  const UNLOCK_THRESHOLD = 25; // >25° uzaklaşınca titreşim kilidi açılsın
-  const STABLE_MS = 1500;      // 1.5 saniye kararlı kalmalı
+  const EXIT_THRESHOLD = 12;   // ±12° dışında hizalamayı boz
+  const UNLOCK_THRESHOLD = 20; // >20° uzaklaşınca titreşim kilidi açılsın
+  const STABLE_MS = 1200;      // 1.2 saniye kararlı kalmalı
   const THRESHOLD_DEG = ENTER_THRESHOLD;
   const HOLD_MS = 1200;
 
@@ -253,10 +253,10 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     return "gray";
   }, [error, locked, isAlignedStable, inZoneNotStable]);
 
-  // Smoothing + hysteresis + titreşim kilidi (hasVibrated); >25° uzaklaşınca kilit açılır
+  // Smoothing (0.75/0.25) + hysteresis + titreşim kilidi; >20° uzaklaşınca kilit açılır
   useEffect(() => {
     if (deviation == null) return;
-    smoothedDeviationRef.current = smoothedDeviationRef.current * 0.7 + deviation * 0.3;
+    smoothedDeviationRef.current = smoothedDeviationRef.current * 0.75 + deviation * 0.25;
     const smooth = Math.abs(smoothedDeviationRef.current);
 
     // Titreşim kilidi: bir kez titrediyse, uzaklaşana kadar tekrar tetikleme
@@ -277,7 +277,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
         stableTimerRef.current = window.setTimeout(() => {
           setIsAlignedStable(true);
           if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-            navigator.vibrate([150, 80, 300]);
+            navigator.vibrate([100, 60, 250]);
           }
           hasVibratedRef.current = true;
           stableTimerRef.current = null;
@@ -336,15 +336,15 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
           </p>
         )}
         
-        {/* Sapma bilgi bandı — hizalanda yeşil, değilse yönlendirme */}
+        {/* Hizalama mesajı — "Kırmızı oku Kabe'ye getir" */}
         {isHeadingReady && view === 'pusula' && deviation !== null && (
-          <div className={`sapma-bilgisi mt-3 rounded-xl px-4 py-3 text-center text-sm font-semibold transition-all duration-300 ${isAligned ? 'sapma-bilgisi--aligned' : ''}`}>
+          <div className={`alignment-msg mt-3 rounded-xl px-5 py-3 text-center text-[15px] font-semibold transition-all duration-400 ${isAligned ? 'alignment-msg--aligned' : ''}`}>
             {isAligned
               ? '✅ Kıble yönündesiniz!'
-              : `Sapma: ${Math.abs(deviation).toFixed(1)}°  ${deviation > 0 ? '→ Sağa dönün' : '← Sola dönün'}`}
+              : `Kırmızı oku Kabe'ye getirin — Sapma: ${Math.abs(deviation).toFixed(1)}°`}
           </div>
         )}
-        {isHeadingReady && view === 'pusula' && statusText && (
+        {isHeadingReady && view === 'pusula' && statusText && !isAligned && (
           <div className={`qiblaBadge qiblaBadge--${statusColor} mt-2`}>
             {statusText}
           </div>
@@ -393,23 +393,18 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
         <div className={`compassRing ${locked ? 'isLocked' : isAligned ? 'isInRange' : ''}`} />
         <div className={`compassInner ${locked ? 'isLocked' : isAligned ? 'isInRange' : ''}`} />
 
-        {/* 1. Kadran — sadece cihaz yönüne göre döner (kuzey yukarı) */}
+        {/* 1. Kadran — cihaz yönüne göre döner (N/S/E/W gerçek yönleri gösterir); ibre yok */}
         <div
-          className="absolute inset-8 transition-transform duration-200 ease-out"
-          style={{ transform: `rotate(${-smoothHeading}deg)` }}
+          className="absolute inset-8 rounded-full border-[5px] transition-all duration-400 ease-out touch-none select-none"
+          style={{
+            borderColor: isAligned ? '#22c55e' : '#d1d5db',
+            boxShadow: isAligned ? '0 0 30px rgba(34,197,94,0.5)' : 'none',
+            transform: `rotate(${-smoothHeading}deg)`,
+          }}
         >
-          <svg viewBox="0 0 200 200" className="w-full h-full">
-            {qiblaAngle != null && (
-              <path
-                d={describeArc(100, 100, 82, qiblaAngle - ENTER_THRESHOLD, qiblaAngle + ENTER_THRESHOLD)}
-                stroke={isAligned ? '#22c55e' : '#94a3b8'}
-                strokeWidth="6"
-                fill="none"
-                strokeLinecap="round"
-                className="transition-colors duration-300"
-              />
-            )}
+          <svg viewBox="0 0 200 200" className="w-full h-full rounded-full">
             <g className="text-gray-700 dark:text-gray-300">
+              <text x="100" y="28" textAnchor="middle" className="text-[14px] font-bold fill-current">N</text>
               <text x="180" y="105" textAnchor="middle" className="text-[14px] font-bold fill-current">E</text>
               <text x="100" y="190" textAnchor="middle" className="text-[14px] font-bold fill-current">S</text>
               <text x="20" y="105" textAnchor="middle" className="text-[14px] font-bold fill-current">W</text>
@@ -427,36 +422,45 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
                 <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="currentColor" strokeWidth={width} className="text-gray-400 dark:text-gray-600" />
               );
             })}
-            <g>
-              <polygon points="100,40 95,100 100,95 105,100" className="fill-red-600" />
-              <polygon points="100,160 95,100 100,105 105,100" className="fill-gray-500" />
-              <circle cx="100" cy="100" r="5" className="fill-gray-900 dark:fill-white" />
-            </g>
           </svg>
         </div>
 
-        {/* 2. Kabe ikonu — görünen açı = qiblaAngle - heading; translateY(-%) = üste (0° = 12 o'clock) */}
+        {/* 2. Kabe ikonu — kadran dışında; açı = qiblaAngle - heading → kıbleye dönünce 0° = üstte */}
         {qiblaAngle != null && (
           <div
-            className="absolute top-1/2 left-1/2 pointer-events-none transition-transform duration-200 ease-out"
+            className="absolute inset-8 flex items-center justify-center pointer-events-none transition-transform duration-200 ease-out"
             style={{
-              transform: `translate(-50%, -50%) rotate(${relativeAngle}deg) translateY(-50%)`,
+              transform: `rotate(${relativeAngle}deg)`,
               transformOrigin: 'center center',
+              zIndex: 10,
             }}
           >
-            <span
-              className={`text-4xl drop-shadow-lg block transition-all duration-300 ${isAligned ? 'qibla-indicator--found' : ''}`}
-              style={{
-                transform: `rotate(${-relativeAngle}deg)${isAligned ? ' scale(1.15)' : ''}`,
-                filter: isAligned ? 'drop-shadow(0 0 8px rgba(34, 197, 94, 0.9))' : undefined,
-              }}
-            >
-              🕋
-            </span>
+            <div className="w-full h-full flex items-center justify-center" style={{ transform: 'translateY(-50%)' }}>
+              <span
+                className={`text-4xl drop-shadow-lg block transition-all duration-300 ${isAligned ? 'qibla-indicator--found' : ''}`}
+                style={{
+                  transform: `rotate(${-relativeAngle}deg)${isAligned ? ' scale(1.15)' : ''}`,
+                  filter: isAligned ? 'drop-shadow(0 0 8px rgba(34, 197, 94, 0.9))' : undefined,
+                }}
+              >
+                🕋
+              </span>
+            </div>
           </div>
         )}
 
-        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full shadow-lg transition-colors duration-300 ${locked ? 'bg-green-600' : 'bg-primary-600'}`} />
+        {/* 3. Kırmızı ok — her zaman 12 o'clock'ta sabit (kuzeyi gösterir) */}
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[5]"
+          style={{ width: 24, height: 48 }}
+        >
+          <svg viewBox="0 0 24 48" className="w-full h-full">
+            <polygon points="12,4 10,44 12,40 14,44" className="fill-red-600" />
+            <polygon points="12,44 10,4 12,8 14,4" className="fill-gray-500" />
+          </svg>
+        </div>
+
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full shadow-lg transition-colors duration-300 z-[6] ${locked ? 'bg-green-600' : 'bg-primary-600'}`} />
       </div>
 
 
@@ -517,21 +521,12 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
       )}
 
       
-      {/* Locked - Kilitli Durum */}
+      {/* Kıble bulundu kartı */}
       {location && qiblaAngle !== null && locked && (
-        <div className="mt-4 p-6 bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-600 rounded-xl shadow-lg">
-          <div className="text-center">
-            <div className="text-5xl mb-3">✅</div>
-            <p className="text-xl text-green-700 dark:text-green-400 font-bold mb-2">
-              Kıble Bulundu!
-            </p>
-            <p className="text-base text-green-600 dark:text-green-500 font-semibold mb-1">
-              Sabit durabilirsiniz
-            </p>
-            <p className="text-sm text-green-600 dark:text-green-500 mt-2">
-              🕋 Cihazınız Kabe&apos;ye bakıyor. Namaz için hazırsınız.
-            </p>
-          </div>
+        <div className="found-card mt-5 text-center py-5 px-5 border-2 border-green-500 dark:border-green-600 rounded-2xl bg-green-50 dark:bg-green-900/20">
+          <span className="text-4xl block mb-2">✅</span>
+          <h2 className="text-xl font-bold text-green-700 dark:text-green-400 mb-1">Kıble Bulundu!</h2>
+          <p className="text-green-600 dark:text-green-500 font-medium">Kırmızı ok Kabe yönünü gösteriyor</p>
         </div>
       )}
 
