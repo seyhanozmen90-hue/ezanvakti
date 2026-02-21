@@ -15,17 +15,26 @@ type DeviceOrientationEventWithCompass = DeviceOrientationEvent & {
    YARDIMCI FONKSİYONLAR
 ───────────────────────────────────────────── */
 
-/** Büyük Daire Formülü → Kıble açısı (0-360°, Kuzey=0) */
+/**
+ * Büyük Daire (Great Circle) → Kabe'ye kerteriz (bearing)
+ * Sonuç: 0–360°, Kuzey=0, saat yönünde (Doğu=90°).
+ * Kaynak: standart jeodezik bearing formülü.
+ */
 function kiblaHesapla(lat: number, lng: number): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
-  const KABE = { lat: toRad(21.4225), lng: toRad(39.8262) };
+  const KABE_LAT = toRad(21.4225);
+  const KABE_LNG = toRad(39.8262);
   const uLat = toRad(lat);
-  const dLng = KABE.lng - toRad(lng);
-  const y = Math.sin(dLng) * Math.cos(KABE.lat);
+  const uLng = toRad(lng);
+  const dLng = KABE_LNG - uLng;
+  const y = Math.sin(dLng) * Math.cos(KABE_LAT);
   const x =
-    Math.cos(uLat) * Math.sin(KABE.lat) -
-    Math.sin(uLat) * Math.cos(KABE.lat) * Math.cos(dLng);
-  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+    Math.cos(uLat) * Math.sin(KABE_LAT) -
+    Math.sin(uLat) * Math.cos(KABE_LAT) * Math.cos(dLng);
+  const bearingRad = Math.atan2(y, x);
+  let derece = (bearingRad * 180) / Math.PI;
+  if (derece < 0) derece += 360;
+  return derece;
 }
 
 /** Haversine → Kabe'ye km */
@@ -81,7 +90,7 @@ export default function KiblePusulasi() {
   const [hata, setHata] = useState('');
   const [kiblaAcisi, setKiblaAcisi] = useState<number | null>(null);
   const [cihazYonu, setCihazYonu] = useState(0);
-  const [ibreAcisi, setIbreAcisi] = useState(0);
+  const [kadranAcisi, setKadranAcisi] = useState(0); // Kadran döner: N her zaman manyetik kuzeyde
   const [kalanAci, setKalanAci] = useState<number | null>(null);
   const [dogruYon, setDogruYon] = useState(false);
   const [mesafe, setMesafe] = useState<number | null>(null);
@@ -89,7 +98,7 @@ export default function KiblePusulasi() {
   const [sensorVar, setSensorVar] = useState(true);
   const [titresim, setTitresim] = useState(false);
 
-  const ibreRef = useRef<IbreRefObj>({ current: 0, rafId: null });
+  const kadranRef = useRef<IbreRefObj>({ current: 0, rafId: null });
   const kiblaRef = useRef<number | null>(null);
   const temizleyici = useRef<(() => void) | null>(null);
 
@@ -109,11 +118,9 @@ export default function KiblePusulasi() {
     const kibla = kiblaRef.current;
     if (kibla === null) return;
 
-    const hedefIbre = (kibla - kuzey + 360) % 360;
-
-    smoothAngle(ibreRef.current, hedefIbre, (v) => {
-      setIbreAcisi(v);
-    });
+    // Gerçek pusula: kadran döner, N her zaman manyetik kuzeyi gösterir
+    const hedefKadran = (360 - kuzey) % 360;
+    smoothAngle(kadranRef.current, hedefKadran, (v) => setKadranAcisi(v));
 
     const fark = aciFarki(kibla, kuzey);
     setKalanAci(fark);
@@ -195,13 +202,13 @@ export default function KiblePusulasi() {
   useEffect(() => {
     return () => {
       temizleyici.current?.();
-      if (ibreRef.current.rafId) cancelAnimationFrame(ibreRef.current.rafId);
+      if (kadranRef.current.rafId) cancelAnimationFrame(kadranRef.current.rafId);
     };
   }, []);
 
   useEffect(() => {
     if (durum === 'aktif' && !sensorVar && kiblaAcisi !== null) {
-      setIbreAcisi(kiblaAcisi);
+      setKadranAcisi(0);
       setKalanAci(null);
     }
   }, [durum, sensorVar, kiblaAcisi]);
@@ -289,85 +296,78 @@ export default function KiblePusulasi() {
 
           <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
             <div className="relative w-64 h-64 mx-auto">
-              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 264 264">
-                <circle cx="132" cy="132" r="128" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2" />
-                {Array.from({ length: 72 }).map((_, i) => {
-                  const a = (i * 5 * Math.PI) / 180;
-                  const major = i % 9 === 0;
-                  const r1 = major ? 114 : 119;
-                  const r2 = 126;
-                  return (
-                    <line
-                      key={i}
-                      x1={132 + r1 * Math.sin(a)}
-                      y1={132 - r1 * Math.cos(a)}
-                      x2={132 + r2 * Math.sin(a)}
-                      y2={132 - r2 * Math.cos(a)}
-                      stroke={major ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}
-                      strokeWidth={major ? 2 : 1}
-                    />
-                  );
-                })}
-                {[
-                  { label: 'K', angle: 0, color: '#34d399' },
-                  { label: 'D', angle: 90, color: '#94a3b8' },
-                  { label: 'G', angle: 180, color: '#94a3b8' },
-                  { label: 'B', angle: 270, color: '#94a3b8' },
-                ].map(({ label, angle, color }) => {
-                  const r = 100;
-                  const a = (angle * Math.PI) / 180;
-                  return (
-                    <text
-                      key={label}
-                      x={132 + r * Math.sin(a)}
-                      y={132 - r * Math.cos(a) + 5}
-                      textAnchor="middle"
-                      fill={color}
-                      fontSize="14"
-                      fontWeight="bold"
-                    >
-                      {label}
-                    </text>
-                  );
-                })}
-              </svg>
+              {/* Sabit üst pointer: Kıble'yi bu çizgiye getir */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 w-0 h-0 border-l-[10px] border-r-[10px] border-t-[14px] border-l-transparent border-r-transparent border-t-emerald-400 drop-shadow-lg" style={{ borderTopColor: 'rgb(52, 211, 153)' }} aria-hidden />
+              <div className="absolute top-1 left-1/2 -translate-x-1/2 z-10 text-emerald-400 text-xs font-bold">KIBLE</div>
 
+              {/* Dönen kadran: N her zaman manyetik kuzeyde, Kıble işareti kadran üzerinde kiblaAcisi° */}
               <div
-                className="absolute inset-6 rounded-full flex items-center justify-center"
+                className="absolute inset-0 rounded-full transition-transform duration-75 ease-out"
                 style={{
-                  transform: `rotate(${ibreAcisi}deg)`,
-                  transition: 'transform 0.05s linear',
+                  transform: `rotate(${kadranAcisi}deg)`,
                   background:
-                    'radial-gradient(circle at 40% 35%, rgba(255,255,255,0.04), rgba(0,0,0,0.3))',
+                    'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.03), transparent 70%)',
                   border: '1px solid rgba(255,255,255,0.08)',
                 }}
               >
-                <svg viewBox="0 0 80 160" className="w-16 h-32" style={{ overflow: 'visible' }}>
-                  <polygon
-                    points="40,4 52,72 40,64 28,72"
-                    fill="url(#yesilGrad)"
-                    stroke="rgba(255,255,255,0.2)"
-                    strokeWidth="0.5"
-                  />
-                  <text x="40" y="0" textAnchor="middle" fontSize="18" dominantBaseline="auto" style={{ userSelect: 'none' }}>
-                    🕋
-                  </text>
-                  <polygon
-                    points="40,88 52,156 40,164 28,156"
-                    fill="url(#grisGrad)"
-                    stroke="rgba(255,255,255,0.1)"
-                    strokeWidth="0.5"
-                  />
-                  <circle cx="40" cy="80" r="7" fill="#1e293b" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
-                  <circle cx="40" cy="80" r="3" fill="rgba(255,255,255,0.5)" />
+                <svg className="w-full h-full" viewBox="0 0 264 264">
+                  <circle cx="132" cy="132" r="128" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2" />
+                  {Array.from({ length: 72 }).map((_, i) => {
+                    const a = (i * 5 * Math.PI) / 180;
+                    const major = i % 9 === 0;
+                    const r1 = major ? 114 : 119;
+                    const r2 = 126;
+                    return (
+                      <line
+                        key={i}
+                        x1={132 + r1 * Math.sin(a)}
+                        y1={132 - r1 * Math.cos(a)}
+                        x2={132 + r2 * Math.sin(a)}
+                        y2={132 - r2 * Math.cos(a)}
+                        stroke={major ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}
+                        strokeWidth={major ? 2 : 1}
+                      />
+                    );
+                  })}
+                  {/* N, D, G, B kadran üzerinde (0°=üst) */}
+                  {[
+                    { label: 'K', angle: 0, color: '#34d399' },
+                    { label: 'D', angle: 90, color: '#94a3b8' },
+                    { label: 'G', angle: 180, color: '#94a3b8' },
+                    { label: 'B', angle: 270, color: '#94a3b8' },
+                  ].map(({ label, angle, color }) => {
+                    const r = 100;
+                    const a = (angle * Math.PI) / 180;
+                    return (
+                      <text
+                        key={label}
+                        x={132 + r * Math.sin(a)}
+                        y={132 - r * Math.cos(a) + 5}
+                        textAnchor="middle"
+                        fill={color}
+                        fontSize="14"
+                        fontWeight="bold"
+                      >
+                        {label}
+                      </text>
+                    );
+                  })}
+                  {/* Kıble işareti: kadran üzerinde kiblaAcisi° (Kuzey=0, saat yönü) */}
+                  {kiblaAcisi !== null && (
+                    <g transform={`rotate(${kiblaAcisi} 132 132)`}>
+                      <polygon
+                        points="132,8 138,44 132,38 126,44"
+                        fill="url(#kibleYesil)"
+                        stroke="rgba(255,255,255,0.25)"
+                        strokeWidth="0.8"
+                      />
+                      <text x="132" y="4" textAnchor="middle" fontSize="16" dominantBaseline="auto" style={{ userSelect: 'none' }}>🕋</text>
+                    </g>
+                  )}
                   <defs>
-                    <linearGradient id="yesilGrad" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="kibleYesil" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#10b981" />
                       <stop offset="100%" stopColor="#065f46" />
-                    </linearGradient>
-                    <linearGradient id="grisGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#475569" />
-                      <stop offset="100%" stopColor="#1e293b" />
                     </linearGradient>
                   </defs>
                 </svg>
@@ -438,8 +438,8 @@ export default function KiblePusulasi() {
               setDogruYon(false);
               setSensorVar(true);
               setCihazYonu(0);
-              setIbreAcisi(0);
-              ibreRef.current = { current: 0, rafId: null };
+              setKadranAcisi(0);
+              kadranRef.current = { current: 0, rafId: null };
             }}
             className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 text-sm py-3 rounded-2xl transition-all"
           >
