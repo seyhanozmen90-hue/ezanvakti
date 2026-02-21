@@ -56,7 +56,7 @@ body {
   }
 }
 
-/* Pusula çerçevesi — hizalanda yeşil border + pulse */
+/* Pusula çerçevesi — hizalanda yeşil; bir kez onay animasyonu, sonra sakin */
 .compass-frame {
   border: 4px solid #e5e7eb;
   border-radius: 50%;
@@ -65,13 +65,14 @@ body {
 
 .compass-frame--aligned {
   border-color: #22c55e;
-  box-shadow: 0 0 30px rgba(34, 197, 94, 0.6), 0 0 60px rgba(34, 197, 94, 0.3);
-  animation: pulseGreen 1.5s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.35);
+  animation: confirmOnce 0.6s ease-out forwards;
 }
 
-@keyframes pulseGreen {
-  0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.5), 0 0 40px rgba(34, 197, 94, 0.2); }
-  50% { box-shadow: 0 0 50px rgba(34, 197, 94, 0.9), 0 0 80px rgba(34, 197, 94, 0.4); }
+@keyframes confirmOnce {
+  0%   { box-shadow: 0 0 0 rgba(34, 197, 94, 0); }
+  50%  { box-shadow: 0 0 50px rgba(34, 197, 94, 0.7); }
+  100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.35); }
 }
 
 .dark .compass-frame { border-color: #374151; }
