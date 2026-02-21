@@ -2,387 +2,452 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// Büyük Daire Formülü ile Kıble açısı hesaplama
-function kiblaAcisiHesapla(lat: number, lng: number): number {
-  const KABE_LAT = 21.4225 * (Math.PI / 180);
-  const KABE_LNG = 39.8262 * (Math.PI / 180);
-  const kullaniciLat = lat * (Math.PI / 180);
-  const kullaniciLng = lng * (Math.PI / 180);
-
-  const dLng = KABE_LNG - kullaniciLng;
-
-  const y = Math.sin(dLng) * Math.cos(KABE_LAT);
-  const x =
-    Math.cos(kullaniciLat) * Math.sin(KABE_LAT) -
-    Math.sin(kullaniciLat) * Math.cos(KABE_LAT) * Math.cos(dLng);
-
-  const aci = Math.atan2(y, x) * (180 / Math.PI);
-  return (aci + 360) % 360;
+/* iOS DeviceOrientationEvent.requestPermission ve webkitCompassHeading */
+declare global {
+  interface DeviceOrientationEvent {
+    requestPermission?: () => Promise<'granted' | 'denied'>;
+    webkitCompassHeading?: number;
+  }
 }
 
-// Mesafe hesaplama (km)
+/* ─────────────────────────────────────────────
+   YARDIMCI FONKSİYONLAR
+───────────────────────────────────────────── */
+
+/** Büyük Daire Formülü → Kıble açısı (0-360°, Kuzey=0) */
+function kiblaHesapla(lat: number, lng: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const KABE = { lat: toRad(21.4225), lng: toRad(39.8262) };
+  const uLat = toRad(lat);
+  const dLng = KABE.lng - toRad(lng);
+  const y = Math.sin(dLng) * Math.cos(KABE.lat);
+  const x =
+    Math.cos(uLat) * Math.sin(KABE.lat) -
+    Math.sin(uLat) * Math.cos(KABE.lat) * Math.cos(dLng);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+/** Haversine → Kabe'ye km */
 function mesafeHesapla(lat: number, lng: number): number {
-  const KABE_LAT = 21.4225;
-  const KABE_LNG = 39.8262;
+  const toRad = (d: number) => (d * Math.PI) / 180;
   const R = 6371;
-  const dLat = (KABE_LAT - lat) * (Math.PI / 180);
-  const dLon = (KABE_LNG - lng) * (Math.PI / 180);
+  const dLat = toRad(21.4225 - lat);
+  const dLng = toRad(39.8262 - lng);
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat * (Math.PI / 180)) *
-      Math.cos(KABE_LAT * (Math.PI / 180)) *
-      Math.sin(dLon / 2) ** 2;
+    Math.cos(toRad(lat)) * Math.cos(toRad(21.4225)) * Math.sin(dLng / 2) ** 2;
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+/**
+ * En kısa açı farkı: -180 ile +180 arasında
+ * + → sağa dön, - → sola dön
+ */
+function aciFarki(hedef: number, mevcut: number): number {
+  return ((hedef - mevcut + 540) % 360) - 180;
+}
+
+type IbreRefObj = { current: number; rafId: number | null };
+
+/** requestAnimationFrame tabanlı smooth sayı interpolasyonu */
+function smoothAngle(
+  ref: IbreRefObj,
+  hedef: number,
+  onUpdate: (v: number) => void,
+  tolerance = 0.5
+): void {
+  if (ref.rafId) cancelAnimationFrame(ref.rafId);
+  const animate = () => {
+    const d = ((hedef - ref.current + 540) % 360) - 180;
+    if (Math.abs(d) < tolerance) {
+      ref.current = hedef % 360;
+    } else {
+      ref.current = (ref.current + d * 0.15 + 360) % 360;
+      ref.rafId = requestAnimationFrame(animate);
+    }
+    onUpdate(ref.current);
+  };
+  ref.rafId = requestAnimationFrame(animate);
 }
 
 type Durum = 'bekliyor' | 'yukleniyor' | 'aktif' | 'hata';
 
+/* ─────────────────────────────────────────────
+   ANA BİLEŞEN
+───────────────────────────────────────────── */
 export default function KiblePusulasi() {
   const [durum, setDurum] = useState<Durum>('bekliyor');
-  const [konum, setKonum] = useState<{ lat: number; lng: number } | null>(null);
+  const [hata, setHata] = useState('');
   const [kiblaAcisi, setKiblaAcisi] = useState<number | null>(null);
-  const [cihazAcisi, setCihazAcisi] = useState(0);
+  const [cihazYonu, setCihazYonu] = useState(0);
+  const [ibreAcisi, setIbreAcisi] = useState(0);
+  const [kalanAci, setKalanAci] = useState<number | null>(null);
   const [dogruYon, setDogruYon] = useState(false);
   const [mesafe, setMesafe] = useState<number | null>(null);
-  const [hataMetni, setHataMetni] = useState('');
-  const [sensorDestegi, setSensorDestegi] = useState(true);
-  const ibraRef = useRef<HTMLDivElement>(null);
-  const animRef = useRef<number | null>(null);
-  const mevcutAciRef = useRef(0);
-  const removeHandlerRef = useRef<(() => void) | null>(null);
+  const [konum, setKonum] = useState<{ lat: number; lng: number } | null>(null);
+  const [sensorVar, setSensorVar] = useState(true);
+  const [titresim, setTitresim] = useState(false);
 
-  // Smooth ibre animasyonu
-  const ibraGuncelle = useCallback(
-    (hedefAci: number) => {
-      if (animRef.current) cancelAnimationFrame(animRef.current);
+  const ibreRef = useRef<IbreRefObj>({ current: 0, rafId: null });
+  const kiblaRef = useRef<number | null>(null);
+  const temizleyici = useRef<(() => void) | null>(null);
 
-      const animate = () => {
-        const fark = ((hedefAci - mevcutAciRef.current + 540) % 360) - 180;
-        if (Math.abs(fark) < 0.3) {
-          mevcutAciRef.current = hedefAci;
-        } else {
-          mevcutAciRef.current += fark * 0.12;
-        }
-        if (ibraRef.current) {
-          ibraRef.current.style.transform = `rotate(${mevcutAciRef.current}deg)`;
-        }
-        if (kiblaAcisi !== null) {
-          const aralik = Math.abs(
-            ((mevcutAciRef.current - kiblaAcisi + 540) % 360) - 180
-          );
-          setDogruYon(aralik < 5);
-        }
-        if (Math.abs(fark) > 0.3) {
-          animRef.current = requestAnimationFrame(animate);
-        }
-      };
-      animRef.current = requestAnimationFrame(animate);
-    },
-    [kiblaAcisi]
-  );
+  kiblaRef.current = kiblaAcisi;
 
-  // Sensör izni ve dinleme
-  const sensorBaslat = useCallback(
-    async () => {
-      const handler = (e: DeviceOrientationEvent) => {
-        const aci =
-          (e as unknown as { webkitCompassHeading?: number }).webkitCompassHeading ??
-          (e.alpha != null ? 360 - e.alpha : 0);
-        setCihazAcisi(aci);
-        if (kiblaAcisi !== null) {
-          const ibraAcisi = (kiblaAcisi - aci + 360) % 360;
-          ibraGuncelle(ibraAcisi);
-        }
-      };
+  const sensorHandler = useCallback((e: DeviceOrientationEvent) => {
+    let kuzey = 0;
 
-      if (
-        typeof DeviceOrientationEvent !== 'undefined' &&
-        typeof (DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> }).requestPermission === 'function'
-      ) {
-        try {
-          const izin = await (DeviceOrientationEvent as unknown as { requestPermission: () => Promise<string> }).requestPermission();
-          if (izin === 'granted') {
-            window.addEventListener('deviceorientation', handler, true);
-            removeHandlerRef.current = () =>
-              window.removeEventListener('deviceorientation', handler, true);
-          } else {
-            setSensorDestegi(false);
-          }
-        } catch {
-          setSensorDestegi(false);
-        }
-      } else if (typeof DeviceOrientationEvent !== 'undefined') {
-        window.addEventListener('deviceorientation', handler, true);
-        removeHandlerRef.current = () =>
-          window.removeEventListener('deviceorientation', handler, true);
-      } else {
-        setSensorDestegi(false);
+    if (typeof e.webkitCompassHeading === 'number' && e.webkitCompassHeading >= 0) {
+      kuzey = e.webkitCompassHeading;
+    } else if (e.alpha !== null && e.alpha !== undefined) {
+      kuzey = (360 - e.alpha) % 360;
+    }
+
+    setCihazYonu(Math.round(kuzey));
+
+    const kibla = kiblaRef.current;
+    if (kibla === null) return;
+
+    const hedefIbre = (kibla - kuzey + 360) % 360;
+
+    smoothAngle(ibreRef.current, hedefIbre, (v) => {
+      setIbreAcisi(v);
+    });
+
+    const fark = aciFarki(kibla, kuzey);
+    setKalanAci(fark);
+
+    const esik = 5;
+    const yeniDogruYon = Math.abs(fark) <= esik;
+    setDogruYon((prev) => {
+      if (!prev && yeniDogruYon) {
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        setTitresim(true);
+        setTimeout(() => setTitresim(false), 800);
       }
-    },
-    [kiblaAcisi, ibraGuncelle]
-  );
-
-  useEffect(() => {
-    return () => {
-      removeHandlerRef.current?.();
-      if (animRef.current) cancelAnimationFrame(animRef.current);
-    };
+      return yeniDogruYon;
+    });
   }, []);
 
-  // Konum al
+  const sensorBaslat = useCallback(async () => {
+    if (typeof DeviceOrientationEvent === 'undefined') {
+      setSensorVar(false);
+      return;
+    }
+
+    const baslat = () => {
+      window.addEventListener('deviceorientation', sensorHandler, true);
+      temizleyici.current = () =>
+        window.removeEventListener('deviceorientation', sensorHandler, true);
+    };
+
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try {
+        const izin = await DeviceOrientationEvent.requestPermission();
+        if (izin === 'granted') {
+          baslat();
+        } else {
+          setSensorVar(false);
+        }
+      } catch {
+        setSensorVar(false);
+      }
+    } else {
+      baslat();
+    }
+  }, [sensorHandler]);
+
   const konumAl = useCallback(() => {
     setDurum('yukleniyor');
+    setHata('');
+
     if (!navigator.geolocation) {
-      setHataMetni('Tarayıcınız konum özelliğini desteklemiyor.');
+      setHata('Tarayıcınız konum özelliğini desteklemiyor.');
       setDurum('hata');
       return;
     }
+
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setKonum({ lat: latitude, lng: longitude });
-        const aci = kiblaAcisiHesapla(latitude, longitude);
-        setKiblaAcisi(aci);
-        setMesafe(mesafeHesapla(latitude, longitude));
+      async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        const kibla = kiblaHesapla(lat, lng);
+        setKonum({ lat, lng });
+        setKiblaAcisi(kibla);
+        setMesafe(mesafeHesapla(lat, lng));
         setDurum('aktif');
-        sensorBaslat();
+        await sensorBaslat();
       },
-      (err) => {
+      (err: GeolocationPositionError) => {
         const mesajlar: Record<number, string> = {
-          1: 'Konum izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.',
-          2: 'Konum bilgisi alınamadı. GPS sinyali kontrol edin.',
+          1: 'Konum izni reddedildi. Tarayıcı ayarlarından izin verin.',
+          2: 'Konum alınamadı. GPS sinyal kontrolü yapın.',
           3: 'Konum isteği zaman aşımına uğradı.',
         };
-        setHataMetni(mesajlar[err.code] ?? 'Bilinmeyen bir hata oluştu.');
+        setHata(mesajlar[err.code] ?? 'Bilinmeyen hata.');
         setDurum('hata');
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   }, [sensorBaslat]);
 
-  // Sensör yoksa kibla açısını manuel olarak göster
   useEffect(() => {
-    if (durum === 'aktif' && !sensorDestegi && kiblaAcisi !== null) {
-      ibraGuncelle(kiblaAcisi);
-    }
-  }, [durum, sensorDestegi, kiblaAcisi, ibraGuncelle]);
+    return () => {
+      temizleyici.current?.();
+      if (ibreRef.current.rafId) cancelAnimationFrame(ibreRef.current.rafId);
+    };
+  }, []);
 
-  const yonIsmi = (aci: number) => {
-    const yonler = ['K', 'KD', 'D', 'GD', 'G', 'GB', 'B', 'KB'];
-    return yonler[Math.round(aci / 45) % 8];
+  useEffect(() => {
+    if (durum === 'aktif' && !sensorVar && kiblaAcisi !== null) {
+      setIbreAcisi(kiblaAcisi);
+      setKalanAci(null);
+    }
+  }, [durum, sensorVar, kiblaAcisi]);
+
+  const yonMesaji = (): { metin: string; renk: string; ikon: string } | null => {
+    if (!sensorVar)
+      return { metin: 'Pusula sensörü yok — statik yön gösteriliyor', renk: 'amber', ikon: '⚠️' };
+    if (kalanAci === null) return { metin: 'Sensör bekleniyor...', renk: 'slate', ikon: '🔄' };
+    if (dogruYon) return { metin: 'DOĞRU YÖNDESINIZ! 🕋', renk: 'emerald', ikon: '✅' };
+    const derece = Math.abs(Math.round(kalanAci));
+    if (kalanAci > 0) return { metin: `SAĞA DÖN → ${derece}°`, renk: 'sky', ikon: '👉' };
+    return { metin: `SOLA DÖN ← ${derece}°`, renk: 'violet', ikon: '👈' };
   };
 
+  const yon = durum === 'aktif' ? yonMesaji() : null;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 flex flex-col items-center justify-center p-4">
-      {/* Başlık */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-3 mb-2">
-          <span className="text-3xl">🕋</span>
-          <h1 className="text-3xl font-bold text-white tracking-wide">
-            Kıble Pusulası
-          </h1>
-          <span className="text-3xl">🧭</span>
-        </div>
-        <p className="text-emerald-400 text-sm">GPS ile Kabe yönünü bulun</p>
+    <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#0d2137] to-[#0a1628] flex flex-col items-center justify-center p-4 font-sans">
+      <div className="text-center mb-6">
+        <h1 className="text-3xl font-black text-white tracking-wider">
+          KI<span className="text-emerald-400">BLE</span>
+        </h1>
+        <p className="text-slate-400 text-sm mt-1">Kabe Yönü Pusulası</p>
       </div>
 
-      {/* Ana Kart */}
-      <div className="w-full max-w-sm">
-        {/* BEKLIYOR */}
-        {durum === 'bekliyor' && (
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 text-center">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center">
-              <span className="text-4xl">📍</span>
-            </div>
-            <h2 className="text-white font-semibold text-lg mb-2">
-              Konuma İzin Gerekli
-            </h2>
-            <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-              Kıble yönünü hesaplamak için konumunuza erişim gereklidir.
-            </p>
-            <button
-              onClick={konumAl}
-              className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition-all text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-emerald-500/25"
-            >
-              Konumu Etkinleştir
-            </button>
+      {durum === 'bekliyor' && (
+        <div className="w-full max-w-xs bg-white/5 border border-white/10 backdrop-blur rounded-3xl p-8 text-center space-y-5">
+          <div className="text-6xl">🕋</div>
+          <div>
+            <p className="text-white font-semibold">Kıble Yönünü Bul</p>
+            <p className="text-slate-400 text-sm mt-1">GPS konumunuza erişim gereklidir</p>
           </div>
-        )}
+          <button
+            onClick={konumAl}
+            className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition-all text-white font-bold py-4 rounded-2xl shadow-xl shadow-emerald-500/30 text-lg"
+          >
+            📍 Başla
+          </button>
+        </div>
+      )}
 
-        {/* YÜKLENIYOR */}
-        {durum === 'yukleniyor' && (
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 text-center">
-            <div className="w-20 h-20 mx-auto mb-6 relative">
-              <div className="absolute inset-0 rounded-full border-4 border-emerald-500/20" />
-              <div className="absolute inset-0 rounded-full border-4 border-t-emerald-500 animate-spin" />
-              <span className="absolute inset-0 flex items-center justify-center text-2xl">
-                🛰️
-              </span>
-            </div>
-            <p className="text-white font-medium">GPS Sinyal Alınıyor...</p>
-            <p className="text-slate-400 text-sm mt-1">Lütfen bekleyin</p>
+      {durum === 'yukleniyor' && (
+        <div className="w-full max-w-xs text-center space-y-4">
+          <div className="w-20 h-20 mx-auto relative">
+            <div className="absolute inset-0 rounded-full border-4 border-emerald-500/20" />
+            <div className="absolute inset-0 rounded-full border-4 border-t-emerald-400 animate-spin" />
+            <span className="absolute inset-0 flex items-center justify-center text-2xl">🛰️</span>
           </div>
-        )}
+          <p className="text-white font-medium">GPS alınıyor...</p>
+          <p className="text-slate-400 text-xs">Cihazınızı açık havada tutun</p>
+        </div>
+      )}
 
-        {/* HATA */}
-        {durum === 'hata' && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-3xl p-8 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/20 flex items-center justify-center text-3xl">
-              ⚠️
-            </div>
-            <p className="text-white font-medium mb-2">Hata Oluştu</p>
-            <p className="text-red-300 text-sm mb-6">{hataMetni}</p>
-            <button
-              onClick={() => setDurum('bekliyor')}
-              className="w-full bg-red-500/20 hover:bg-red-500/30 text-red-300 font-medium py-3 rounded-2xl border border-red-500/30 transition-all"
-            >
-              Tekrar Dene
-            </button>
+      {durum === 'hata' && (
+        <div className="w-full max-w-xs bg-red-500/10 border border-red-500/30 rounded-3xl p-7 text-center space-y-4">
+          <div className="text-4xl">⚠️</div>
+          <p className="text-red-300 text-sm">{hata}</p>
+          <button
+            onClick={() => setDurum('bekliyor')}
+            className="w-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 font-medium py-3 rounded-2xl transition-all"
+          >
+            Tekrar Dene
+          </button>
+        </div>
+      )}
+
+      {durum === 'aktif' && (
+        <div className="w-full max-w-sm space-y-4">
+          <div
+            className={`
+              rounded-2xl py-4 px-5 text-center font-bold text-lg tracking-wide transition-all duration-300
+              ${dogruYon
+                ? `bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 ${titresim ? 'scale-105' : ''}`
+                : yon?.renk === 'sky'
+                  ? 'bg-sky-500/15 border border-sky-500/40 text-sky-300'
+                  : yon?.renk === 'violet'
+                    ? 'bg-violet-500/15 border border-violet-500/40 text-violet-300'
+                    : 'bg-slate-500/15 border border-slate-500/30 text-slate-400'
+              }
+            `}
+          >
+            <span className="mr-2 text-2xl">{yon?.ikon}</span>
+            {yon?.metin}
           </div>
-        )}
 
-        {/* AKTİF - Pusula */}
-        {durum === 'aktif' && (
-          <div className="space-y-4">
-            {/* Pusula */}
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-6">
-              {/* Doğru Yön Göstergesi */}
-              <div
-                className={`text-center mb-4 py-2 px-4 rounded-full text-sm font-medium transition-all ${
-                  dogruYon
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                    : 'bg-white/5 text-slate-400 border border-white/10'
-                }`}
-              >
-                {dogruYon
-                  ? '✅ Doğru Yöndesiniz! Kıble Bu Yön'
-                  : 'Kıble Yönünü Bulun'}
-              </div>
-
-              {/* Pusula Dairesi */}
-              <div className="relative w-64 h-64 mx-auto">
-                {/* Dış Halka */}
-                <div className="absolute inset-0 rounded-full border-2 border-white/10 bg-gradient-to-b from-white/5 to-transparent" />
-
-                {/* Yön İşaretleri */}
+          <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
+            <div className="relative w-64 h-64 mx-auto">
+              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 264 264">
+                <circle cx="132" cy="132" r="128" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2" />
+                {Array.from({ length: 72 }).map((_, i) => {
+                  const a = (i * 5 * Math.PI) / 180;
+                  const major = i % 9 === 0;
+                  const r1 = major ? 114 : 119;
+                  const r2 = 126;
+                  return (
+                    <line
+                      key={i}
+                      x1={132 + r1 * Math.sin(a)}
+                      y1={132 - r1 * Math.cos(a)}
+                      x2={132 + r2 * Math.sin(a)}
+                      y2={132 - r2 * Math.cos(a)}
+                      stroke={major ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}
+                      strokeWidth={major ? 2 : 1}
+                    />
+                  );
+                })}
                 {[
-                  { label: 'K', deg: 0 },
-                  { label: 'D', deg: 90 },
-                  { label: 'G', deg: 180 },
-                  { label: 'B', deg: 270 },
-                ].map(({ label, deg }) => (
-                  <div
-                    key={label}
-                    className="absolute inset-0 flex items-start justify-center"
-                    style={{ transform: `rotate(${deg}deg)` }}
-                  >
-                    <span
-                      className={`text-xs font-bold mt-2 ${
-                        label === 'K' ? 'text-emerald-400' : 'text-slate-400'
-                      }`}
+                  { label: 'K', angle: 0, color: '#34d399' },
+                  { label: 'D', angle: 90, color: '#94a3b8' },
+                  { label: 'G', angle: 180, color: '#94a3b8' },
+                  { label: 'B', angle: 270, color: '#94a3b8' },
+                ].map(({ label, angle, color }) => {
+                  const r = 100;
+                  const a = (angle * Math.PI) / 180;
+                  return (
+                    <text
+                      key={label}
+                      x={132 + r * Math.sin(a)}
+                      y={132 - r * Math.cos(a) + 5}
+                      textAnchor="middle"
+                      fill={color}
+                      fontSize="14"
+                      fontWeight="bold"
                     >
                       {label}
-                    </span>
-                  </div>
-                ))}
+                    </text>
+                  );
+                })}
+              </svg>
 
-                {/* İç Çember */}
-                <div className="absolute inset-6 rounded-full border border-white/5 bg-gradient-to-br from-slate-800/50 to-slate-900/50 flex items-center justify-center">
-                  {/* İbre (Kıble oku) */}
-                  <div
-                    ref={ibraRef}
-                    className="absolute w-full h-full flex flex-col items-center justify-start pt-4"
-                    style={{ transformOrigin: 'center center' }}
-                  >
-                    <div className="flex flex-col items-center">
-                      {/* Üst (Kıble yönü - Kabe) */}
-                      <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-b-[20px] border-l-transparent border-r-transparent border-b-emerald-400 drop-shadow-lg" />
-                      <div className="w-2 h-12 bg-gradient-to-b from-emerald-400 to-emerald-600 rounded-b" />
-                      {/* Merkez nokta */}
-                      <div className="w-4 h-4 rounded-full bg-white/20 border-2 border-white/40 -my-1" />
-                      {/* Alt */}
-                      <div className="w-2 h-12 bg-gradient-to-b from-slate-500 to-slate-600 rounded-t" />
-                      <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[20px] border-l-transparent border-r-transparent border-t-slate-500" />
-                    </div>
-                  </div>
-
-                  {/* Kabe ikonu ortada */}
-                  <span className="text-2xl z-10 pointer-events-none select-none opacity-60">
+              <div
+                className="absolute inset-6 rounded-full flex items-center justify-center"
+                style={{
+                  transform: `rotate(${ibreAcisi}deg)`,
+                  transition: 'transform 0.05s linear',
+                  background:
+                    'radial-gradient(circle at 40% 35%, rgba(255,255,255,0.04), rgba(0,0,0,0.3))',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
+                <svg viewBox="0 0 80 160" className="w-16 h-32" style={{ overflow: 'visible' }}>
+                  <polygon
+                    points="40,4 52,72 40,64 28,72"
+                    fill="url(#yesilGrad)"
+                    stroke="rgba(255,255,255,0.2)"
+                    strokeWidth="0.5"
+                  />
+                  <text x="40" y="0" textAnchor="middle" fontSize="18" dominantBaseline="auto" style={{ userSelect: 'none' }}>
                     🕋
-                  </span>
-                </div>
+                  </text>
+                  <polygon
+                    points="40,88 52,156 40,164 28,156"
+                    fill="url(#grisGrad)"
+                    stroke="rgba(255,255,255,0.1)"
+                    strokeWidth="0.5"
+                  />
+                  <circle cx="40" cy="80" r="7" fill="#1e293b" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
+                  <circle cx="40" cy="80" r="3" fill="rgba(255,255,255,0.5)" />
+                  <defs>
+                    <linearGradient id="yesilGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" />
+                      <stop offset="100%" stopColor="#065f46" />
+                    </linearGradient>
+                    <linearGradient id="grisGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#475569" />
+                      <stop offset="100%" stopColor="#1e293b" />
+                    </linearGradient>
+                  </defs>
+                </svg>
               </div>
+            </div>
 
-              {/* Açı Bilgisi */}
-              <div className="flex justify-center gap-6 mt-4">
+            <div className="flex justify-center gap-8 mt-5">
+              <div className="text-center">
+                <div className="text-emerald-400 text-2xl font-mono font-bold">
+                  {kiblaAcisi !== null ? Math.round(kiblaAcisi) : '--'}°
+                </div>
+                <div className="text-slate-500 text-xs mt-0.5">Kıble Açısı</div>
+              </div>
+              {sensorVar && (
                 <div className="text-center">
-                  <div className="text-2xl font-mono font-bold text-emerald-400">
-                    {kiblaAcisi != null ? Math.round(kiblaAcisi) : '—'}°
+                  <div className="text-slate-300 text-2xl font-mono font-bold">{cihazYonu}°</div>
+                  <div className="text-slate-500 text-xs mt-0.5">Cihaz Yönü</div>
+                </div>
+              )}
+              {kalanAci !== null && (
+                <div className="text-center">
+                  <div
+                    className={`text-2xl font-mono font-bold ${
+                      dogruYon ? 'text-emerald-400' : 'text-amber-400'
+                    }`}
+                  >
+                    {dogruYon ? '✓' : `${Math.abs(Math.round(kalanAci))}°`}
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">Kıble Açısı</div>
-                </div>
-                {sensorDestegi && (
-                  <div className="text-center">
-                    <div className="text-2xl font-mono font-bold text-slate-300">
-                      {Math.round(cihazAcisi)}°{' '}
-                      <span className="text-base">{yonIsmi(cihazAcisi)}</span>
-                    </div>
-                    <div className="text-xs text-slate-500 mt-0.5">Cihaz Yönü</div>
+                  <div className="text-slate-500 text-xs mt-0.5">
+                    {dogruYon ? 'İsabet' : kalanAci > 0 ? 'Sağda' : 'Solda'}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
-
-            {/* Bilgi Kartları */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-                <div className="text-emerald-400 text-xl font-bold">
-                  {mesafe?.toLocaleString('tr-TR') ?? '—'} km
-                </div>
-                <div className="text-slate-500 text-xs mt-1">Kabe&apos;ye Mesafe</div>
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-                <div className="text-slate-300 text-sm font-mono">
-                  {konum?.lat.toFixed(4)}°K
-                </div>
-                <div className="text-slate-300 text-sm font-mono">
-                  {konum?.lng.toFixed(4)}°D
-                </div>
-                <div className="text-slate-500 text-xs mt-1">Konumunuz</div>
-              </div>
-            </div>
-
-            {/* Sensör Uyarısı */}
-            {!sensorDestegi && (
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-center">
-                <p className="text-amber-400 text-sm">
-                  ⚠️ Sensör desteklenmiyor. Pusula ok, hesaplanan kıble yönünü
-                  gösteriyor. Cihazınızı döndürerek yönü bulun.
-                </p>
-              </div>
-            )}
-
-            {/* Yenile Butonu */}
-            <button
-              onClick={() => {
-                removeHandlerRef.current?.();
-                setDurum('bekliyor');
-                setKonum(null);
-                setKiblaAcisi(null);
-                setCihazAcisi(0);
-                setDogruYon(false);
-              }}
-              className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 text-sm py-3 rounded-2xl transition-all"
-            >
-              Konumu Yenile
-            </button>
           </div>
-        )}
-      </div>
 
-      {/* Alt Bilgi */}
-      <p className="text-slate-600 text-xs text-center mt-8 max-w-xs">
-        Kabe koordinatları: 21.4225°K, 39.8262°D · Büyük Daire Formülü
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+              <div className="text-emerald-400 text-xl font-bold">
+                {mesafe?.toLocaleString('tr-TR')} km
+              </div>
+              <div className="text-slate-500 text-xs mt-1">Kabe&apos;ye Mesafe</div>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+              <div className="text-slate-300 text-xs font-mono">{konum?.lat.toFixed(4)}°K</div>
+              <div className="text-slate-300 text-xs font-mono">{konum?.lng.toFixed(4)}°D</div>
+              <div className="text-slate-500 text-xs mt-1">Konumunuz</div>
+            </div>
+          </div>
+
+          {!sensorVar && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4">
+              <p className="text-amber-400 text-sm text-center">
+                ⚠️ Pusula sensörü desteklenmiyor.
+                <br />
+                Hesaplanan kıble yönü statik gösteriliyor.
+              </p>
+            </div>
+          )}
+
+          <button
+            onClick={() => {
+              temizleyici.current?.();
+              setDurum('bekliyor');
+              setKonum(null);
+              setKiblaAcisi(null);
+              setKalanAci(null);
+              setDogruYon(false);
+              setSensorVar(true);
+              setCihazYonu(0);
+              setIbreAcisi(0);
+              ibreRef.current = { current: 0, rafId: null };
+            }}
+            className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 text-sm py-3 rounded-2xl transition-all"
+          >
+            🔄 Konumu Yenile
+          </button>
+        </div>
+      )}
+
+      <p className="text-slate-700 text-xs text-center mt-6">
+        Kabe: 21.4225°K, 39.8262°D · Büyük Daire Formülü
       </p>
     </div>
   );
