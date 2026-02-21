@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-/* iOS DeviceOrientationEvent.requestPermission ve webkitCompassHeading */
-declare global {
-  interface DeviceOrientationEvent {
-    requestPermission?: () => Promise<'granted' | 'denied'>;
-    webkitCompassHeading?: number;
-  }
-}
+/* iOS: requestPermission constructor'da static */
+type DeviceOrientationEventWithPermission = typeof DeviceOrientationEvent & {
+  requestPermission?: () => Promise<'granted' | 'denied'>;
+};
+/* iOS: webkitCompassHeading event instance'da (standart değil) */
+type DeviceOrientationEventWithCompass = DeviceOrientationEvent & {
+  webkitCompassHeading?: number;
+};
 
 /* ─────────────────────────────────────────────
    YARDIMCI FONKSİYONLAR
@@ -94,7 +95,7 @@ export default function KiblePusulasi() {
 
   kiblaRef.current = kiblaAcisi;
 
-  const sensorHandler = useCallback((e: DeviceOrientationEvent) => {
+  const sensorHandler = useCallback((e: DeviceOrientationEventWithCompass) => {
     let kuzey = 0;
 
     if (typeof e.webkitCompassHeading === 'number' && e.webkitCompassHeading >= 0) {
@@ -141,9 +142,10 @@ export default function KiblePusulasi() {
         window.removeEventListener('deviceorientation', sensorHandler, true);
     };
 
-    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    const DOE = DeviceOrientationEvent as DeviceOrientationEventWithPermission;
+    if (typeof DOE.requestPermission === 'function') {
       try {
-        const izin = await DeviceOrientationEvent.requestPermission();
+        const izin = await DOE.requestPermission();
         if (izin === 'granted') {
           baslat();
         } else {
