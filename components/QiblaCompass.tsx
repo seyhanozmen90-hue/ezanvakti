@@ -27,7 +27,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   const [selectedCity, setSelectedCity] = useState<string>('');
   const [isAligned, setIsAligned] = useState<boolean>(false);
 
-  const stableTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stableTimerRef = useRef<number | null>(null);
   const hasConfirmedRef = useRef<boolean>(false);  // titreşim kilidi
   const isAlignedRef = useRef<boolean>(false);    // state sync — EXIT'te kesin false
   const smoothedRef = useRef<number>(0);
@@ -68,17 +68,17 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   }
 
   // Smoothing — titreme önler; rawDeviation -180..+180
-  function updateSmoothed(rawDeviation: number): number {
+  const updateSmoothed = useCallback((rawDeviation: number): number => {
     const normalized = normalizeAngle(rawDeviation);
     smoothedRef.current = smoothedRef.current * 0.72 + normalized * 0.28;
     return smoothedRef.current;
-  }
+  }, []);
 
   // Linear interpolation for smooth heading (dial)
-  const lerp = (start: number, end: number, t: number): number => {
-    let diff = normalizeAngle(end - start);
+  const lerp = useCallback((start: number, end: number, t: number): number => {
+    const diff = normalizeAngle(end - start);
     return normalizeAngle360(start + diff * t);
-  };
+  }, []);
 
   // Great Circle — Kıble açısı (Kuzeyden saat yönünde derece)
   const calculateQiblaAngle = useCallback((lat: number, lon: number): number => {
@@ -276,7 +276,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
         }, STABLE_MS);
       }
     }
-  }, [deviation]);
+  }, [deviation, updateSmoothed]);
 
   useEffect(() => () => {
     if (stableTimerRef.current) clearTimeout(stableTimerRef.current);
