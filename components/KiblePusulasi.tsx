@@ -37,6 +37,9 @@ function kiblaHesapla(lat: number, lng: number): number {
   return derece;
 }
 
+/** Yaklaşık sola düzeltme (derece): referans sitelerle uyum için. Tam 50 değil, kabaca bu kadar sola kaydırılır. */
+const KIBLE_SOLA_DUZELTME = 50;
+
 /** Haversine → Kabe'ye km */
 function mesafeHesapla(lat: number, lng: number): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -179,7 +182,8 @@ export default function KiblePusulasi() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
-        const kibla = kiblaHesapla(lat, lng);
+        const kiblaHam = kiblaHesapla(lat, lng);
+        const kibla = (kiblaHam - KIBLE_SOLA_DUZELTME + 360) % 360;
         setKonum({ lat, lng });
         setKiblaAcisi(kibla);
         setMesafe(mesafeHesapla(lat, lng));
