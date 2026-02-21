@@ -58,20 +58,27 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     'Trabzon': { lat: 41.0015, lon: 39.7178 },
   };
 
-  // Normalize angle to -180..180 range
-  const normalizeAngle = (a: number): number => {
-    return ((a + 540) % 360) - 180;
-  };
+  // Normalize angle to 0..360
+  function normalizeAngle(angle: number): number {
+    return (angle + 360) % 360;
+  }
+
+  // Shortest rotation in [-180, 180] (prevents compass jump)
+  function shortestRotation(angle: number): number {
+    if (angle > 180) return angle - 360;
+    if (angle < -180) return angle + 360;
+    return angle;
+  }
 
   // Shortest angle difference (for alignment check)
   const shortestAngleDiff = (target: number, current: number): number => {
-    return normalizeAngle(target - current);
+    return shortestRotation(normalizeAngle(target - current));
   };
 
   // Linear interpolation for smooth heading
   const lerp = (start: number, end: number, t: number): number => {
-    let diff = shortestAngleDiff(end, start);
-    return (start + diff * t + 360) % 360;
+    let diff = shortestRotation(normalizeAngle(end - start));
+    return normalizeAngle(start + diff * t);
   };
 
   // Great Circle — Kıble açısı (Kuzeyden saat yönünde derece)
@@ -96,20 +103,22 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
   }, []);
 
-  // iOS için pusula izni
-  const requestCompassPermission = async () => {
-    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+  // iOS motion/orientation permission (call before adding orientation listener)
+  const requestMotionPermission = async (): Promise<boolean> => {
+    if (
+      typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof (DeviceOrientationEvent as any).requestPermission === 'function'
+    ) {
       try {
-        const response = await (DeviceOrientationEvent as any).requestPermission();
-        if (response === 'granted') {
+        const res = await (DeviceOrientationEvent as any).requestPermission();
+        if (res === 'granted') {
           setNeedsPermission(false);
           setPermission('granted');
           return true;
-        } else {
-          setErrorMessage('Pusula izni verilmedi');
-          return false;
         }
-      } catch (err) {
+        setErrorMessage('Pusula izni verilmedi');
+        return false;
+      } catch {
         setErrorMessage('Pusula izni alınamadı');
         return false;
       }
@@ -117,25 +126,34 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     return true;
   };
 
-  // Konum al
+  const watchIdRef = useRef<number | null>(null);
+
+  // Konum al — watchPosition ile güncellemelerde kıble yeniden hesaplanır
   const getLocation = async () => {
     if (!navigator.geolocation) {
       setErrorMessage('Tarayıcınız konum özelliğini desteklemiyor');
       return;
     }
 
-    // iOS için pusula iznini kontrol et
-    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+    if (
+      typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof (DeviceOrientationEvent as any).requestPermission === 'function'
+    ) {
       setNeedsPermission(true);
-      const granted = await requestCompassPermission();
+      const granted = await requestMotionPermission();
       if (!granted) return;
     }
 
     setErrorMessage('');
     setLocked(false);
     inRangeSinceRef.current = null;
-    
-    navigator.geolocation.getCurrentPosition(
+
+    if (watchIdRef.current != null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const lat = position.coords.latitude;
         const lon = position.coords.longitude;
@@ -151,15 +169,16 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     );
   };
 
-  // Cihaz yönü: iOS webkitCompassHeading, Android alpha (360 - alpha)
+  // True north: prefer webkitCompassHeading (iOS), else 360 - alpha (Android); always normalize
   const getCompassHeading = useCallback((event: DeviceOrientationEvent): number | null => {
-    if ((event as any).webkitCompassHeading !== undefined) {
-      return (event as any).webkitCompassHeading;
-    }
-    if (event.alpha != null) {
-      return (360 - event.alpha) % 360;
-    }
-    return null;
+    const raw =
+      (event as any).webkitCompassHeading != null
+        ? (event as any).webkitCompassHeading
+        : event.alpha != null
+          ? 360 - event.alpha
+          : null;
+    if (raw == null) return null;
+    return normalizeAngle(raw);
   }, []);
 
   useEffect(() => {
@@ -185,6 +204,15 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
       window.removeEventListener('deviceorientation', handleOrientation, true);
     };
   }, [getCompassHeading]);
+
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current != null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, []);
 
   // Prop'tan gelen konum varsa kullan
   useEffect(() => {
@@ -223,16 +251,22 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   // Sapma: -180..+180 (pozitif = Kıble sağda → sağa dön, negatif = sola dön)
   const deviation = useMemo(() => {
     if (typeof qiblaAngle !== 'number' || typeof heading !== 'number') return null;
-    return normalizeAngle(qiblaAngle - heading);
+    return shortestRotation(normalizeAngle(qiblaAngle - heading));
   }, [qiblaAngle, heading]);
 
   const error = useMemo(() => (deviation != null ? Math.abs(deviation) : null), [deviation]);
 
-  // Kabe ikonunun pusulada görünen açısı (0 = üst). Kullanıcı kıbleye bakınca 0° = üstte
-  const relativeAngle = useMemo(() => {
+  // Qibla rotation: shortest path, no jump; compass (Kabe) uses this
+  const rotation = useMemo(() => {
     if (qiblaAngle == null || smoothHeading == null) return 0;
-    return (qiblaAngle - smoothHeading + 360) % 360;
+    return shortestRotation(normalizeAngle(qiblaAngle - smoothHeading));
   }, [qiblaAngle, smoothHeading]);
+
+  // Display angle 0..360 for CSS rotate (Kabe position)
+  const relativeAngle = useMemo(() => {
+    const r = rotation;
+    return r < 0 ? r + 360 : r;
+  }, [rotation]);
 
   const isHeadingReady = heading !== null;
 
@@ -395,11 +429,12 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
 
         {/* 1. Kadran — cihaz yönüne göre döner (N/S/E/W gerçek yönleri gösterir); ibre yok */}
         <div
-          className="absolute inset-8 rounded-full border-[5px] transition-all duration-400 ease-out touch-none select-none"
+          className="absolute inset-8 rounded-full border-[5px] touch-none select-none"
           style={{
             borderColor: isAligned ? '#22c55e' : '#d1d5db',
             boxShadow: isAligned ? '0 0 30px rgba(34,197,94,0.5)' : 'none',
             transform: `rotate(${-smoothHeading}deg)`,
+            transition: 'transform 0.25s linear',
           }}
         >
           <svg viewBox="0 0 200 200" className="w-full h-full rounded-full">
@@ -425,13 +460,14 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
           </svg>
         </div>
 
-        {/* 2. Kabe ikonu — kadran dışında; açı = qiblaAngle - heading → kıbleye dönünce 0° = üstte */}
+        {/* 2. Kabe ikonu — kadran dışında; rotation = shortestRotation(normalizeAngle(qibla - heading)) */}
         {qiblaAngle != null && (
           <div
-            className="absolute inset-8 flex items-center justify-center pointer-events-none transition-transform duration-200 ease-out"
+            className="absolute inset-8 flex items-center justify-center pointer-events-none"
             style={{
               transform: `rotate(${relativeAngle}deg)`,
               transformOrigin: 'center center',
+              transition: 'transform 0.25s linear',
               zIndex: 10,
             }}
           >
