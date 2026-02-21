@@ -1,5 +1,15 @@
 import { Metadata } from 'next';
-import QiblaCompass from '@/components/QiblaCompass';
+import dynamic from 'next/dynamic';
+
+// Leaflet/window kullandığı için sadece client'ta yükle (window is not defined hatasını önler)
+const QiblaCompass = dynamic(() => import('@/components/QiblaCompass'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center py-16 text-gray-500 dark:text-gray-400">
+      Pusula yükleniyor…
+    </div>
+  ),
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   return {

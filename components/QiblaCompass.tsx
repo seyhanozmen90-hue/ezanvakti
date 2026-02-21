@@ -26,19 +26,21 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   const [needsPermission, setNeedsPermission] = useState<boolean>(false);
   const [selectedCity, setSelectedCity] = useState<string>('');
   const [locked, setLocked] = useState<boolean>(false);
-  const [isAlignedStable, setIsAlignedStable] = useState<boolean>(false); // 1sn kararlı → onaylandı
-  const [confirmedOnce, setConfirmedOnce] = useState<boolean>(false);   // titreşim bir kez çaldı mı
+  const [isAlignedStable, setIsAlignedStable] = useState<boolean>(false);
 
   const inRangeSinceRef = useRef<number | null>(null);
-  const stableTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const stableTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastHeadingRef = useRef<number>(0);
+  const hasVibratedRef = useRef<boolean>(false);  // titreşim kilidi — bir kez titredi mi
+  const smoothedDeviationRef = useRef<number>(0);
 
   // Kabe koordinatları (Mekke) — Great Circle hesaplama için
   const KAABA_LAT = 21.4225;
   const KAABA_LON = 39.8262;
-  const ENTER_THRESHOLD = 7;   // ±7° içinde hizalandı say (hysteresis giriş)
-  const EXIT_THRESHOLD = 12;   // ±12° dışında hizalamayı boz (hysteresis çıkış)
-  const STABLE_MS = 1000;      // 1 saniye kararlı kalmalı
+  const ENTER_THRESHOLD = 8;   // ±8° içinde hizalandı say
+  const EXIT_THRESHOLD = 15;   // ±15° dışında hizalamayı boz
+  const UNLOCK_THRESHOLD = 25; // >25° uzaklaşınca titreşim kilidi açılsın
+  const STABLE_MS = 1500;      // 1.5 saniye kararlı kalmalı
   const THRESHOLD_DEG = ENTER_THRESHOLD;
   const HOLD_MS = 1200;
 
@@ -240,7 +242,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     if (error == null) return '';
     if (locked) return `✅ Kıble bulundu (sapma: ${error.toFixed(1)}°)`;
     if (isAlignedStable) return '✅ Kıble yönündesiniz!';
-    if (inZoneNotStable) return 'Hedef bölgede, 1 sn sabit tutun...';
+    if (inZoneNotStable) return 'Hedef bölgede, 1.5 sn sabit tutun...';
     return `Sapma: ${error.toFixed(1)}°`;
   })();
 
@@ -251,38 +253,55 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     return "gray";
   }, [error, locked, isAlignedStable, inZoneNotStable]);
 
-  // Hysteresis + 1sn kararlılık: giriş ±7°, çıkış ±12°; 1sn sonra onay, titreşim tek sefer
+  // Smoothing + hysteresis + titreşim kilidi (hasVibrated); >25° uzaklaşınca kilit açılır
   useEffect(() => {
     if (deviation == null) return;
-    const absDev = Math.abs(deviation);
+    smoothedDeviationRef.current = smoothedDeviationRef.current * 0.7 + deviation * 0.3;
+    const smooth = Math.abs(smoothedDeviationRef.current);
 
-    if (!isAlignedStable && absDev <= ENTER_THRESHOLD) {
+    // Titreşim kilidi: bir kez titrediyse, uzaklaşana kadar tekrar tetikleme
+    if (hasVibratedRef.current) {
+      if (smooth > UNLOCK_THRESHOLD) {
+        hasVibratedRef.current = false;
+        if (stableTimerRef.current) {
+          clearTimeout(stableTimerRef.current);
+          stableTimerRef.current = null;
+        }
+        setIsAlignedStable(false);
+      }
+      return;
+    }
+
+    if (!isAlignedStable && smooth <= ENTER_THRESHOLD) {
       if (stableTimerRef.current == null) {
         stableTimerRef.current = window.setTimeout(() => {
           setIsAlignedStable(true);
-          setConfirmedOnce((prev) => {
-            if (!prev && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-              navigator.vibrate([200, 100, 400]);
-            }
-            return true;
-          });
+          if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+            navigator.vibrate([150, 80, 300]);
+          }
+          hasVibratedRef.current = true;
           stableTimerRef.current = null;
         }, STABLE_MS);
       }
-    } else if (isAlignedStable && absDev > EXIT_THRESHOLD) {
+    } else if (!isAlignedStable && smooth > EXIT_THRESHOLD) {
+      if (stableTimerRef.current) {
+        clearTimeout(stableTimerRef.current);
+        stableTimerRef.current = null;
+      }
+    } else if (isAlignedStable && smooth > EXIT_THRESHOLD) {
       if (stableTimerRef.current) {
         clearTimeout(stableTimerRef.current);
         stableTimerRef.current = null;
       }
       setIsAlignedStable(false);
-      setConfirmedOnce(false);
-    } else if (!isAlignedStable && absDev > EXIT_THRESHOLD) {
-      if (stableTimerRef.current) {
-        clearTimeout(stableTimerRef.current);
-        stableTimerRef.current = null;
-      }
     }
   }, [deviation, isAlignedStable]);
+
+  useEffect(() => {
+    return () => {
+      if (stableTimerRef.current) clearTimeout(stableTimerRef.current);
+    };
+  }, []);
 
   // Kilitleme: onaylandıktan sonra HOLD_MS süre tutunca kilit (opsiyonel)
   useEffect(() => {
@@ -416,12 +435,12 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
           </svg>
         </div>
 
-        {/* 2. Kabe ikonu — kadrandan bağımsız; görünen açı = qiblaAngle - heading → kıbleye bakınca üstte */}
+        {/* 2. Kabe ikonu — görünen açı = qiblaAngle - heading; translateY(-%) = üste (0° = 12 o'clock) */}
         {qiblaAngle != null && (
           <div
             className="absolute top-1/2 left-1/2 pointer-events-none transition-transform duration-200 ease-out"
             style={{
-              transform: `translate(-50%, -50%) rotate(${relativeAngle}deg) translateY(-38%)`,
+              transform: `translate(-50%, -50%) rotate(${relativeAngle}deg) translateY(-50%)`,
               transformOrigin: 'center center',
             }}
           >
