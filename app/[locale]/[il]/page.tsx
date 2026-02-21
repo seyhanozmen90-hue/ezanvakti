@@ -450,12 +450,12 @@ export default async function CityPage({ params }: CityPageProps) {
           )}
 
           {/* Today's Prayer Times */}
-          <div className="mb-6">
-            <h2 className="text-base sm:text-lg font-bold text-navy-900 dark:bg-gradient-to-r dark:from-gold-400 dark:to-gold-600 dark:bg-clip-text dark:text-transparent mb-3 flex items-center gap-2">
+          <div className="mb-8 sm:mb-6">
+            <h2 className="text-base sm:text-lg font-bold text-navy-900 dark:bg-gradient-to-r dark:from-gold-400 dark:to-gold-600 dark:bg-clip-text dark:text-transparent mb-4 sm:mb-3 flex items-center gap-2">
               <span className="text-xl sm:text-2xl">📅</span>
               <span className="text-navy-900 dark:text-transparent">{tPrayer('todaysPrayersWithCity', { city: city.name })}</span>
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-4">
               {(['imsak', 'gunes', 'ogle', 'ikindi', 'aksam', 'yatsi'] as PrayerName[]).map((prayerName) => (
                 <PrayerTimeCard
                   key={prayerName}
@@ -468,9 +468,11 @@ export default async function CityPage({ params }: CityPageProps) {
             </div>
           </div>
 
-          {/* Monthly Table */}
+          {/* Monthly Table - mobilde üstten daha fazla boşluk */}
           {monthlyTimes.length > 0 && (
-            <MonthlyTable times={monthlyTimes} locale={params.locale} cityName={city.name} />
+            <div className="mt-8 sm:mt-6">
+              <MonthlyTable times={monthlyTimes} locale={params.locale} cityName={city.name} />
+            </div>
           )}
 
           {/* Footer */}

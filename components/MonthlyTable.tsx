@@ -19,10 +19,10 @@ export default function MonthlyTable({ times, locale, cityName }: MonthlyTablePr
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <div className="w-full mt-6 bg-white dark:bg-gradient-to-br dark:from-navy-dark/60 dark:to-navy-darker/60 backdrop-blur-sm rounded-xl shadow-lg dark:shadow-xl overflow-hidden border border-gold-500 dark:border-gold-500/20">
+    <div className="w-full bg-white dark:bg-gradient-to-br dark:from-navy-dark/60 dark:to-navy-darker/60 backdrop-blur-sm rounded-xl shadow-lg dark:shadow-xl overflow-hidden border border-gold-500 dark:border-gold-500/20">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-2.5 flex justify-between items-center text-left hover:bg-gray-100 dark:hover:bg-gold-500/10 transition-all"
+        className="w-full px-4 py-3 sm:py-2.5 flex justify-between items-center text-left hover:bg-gray-100 dark:hover:bg-gold-500/10 transition-all"
       >
         <div className="flex items-center gap-2">
           <span className="text-xl">📅</span>
@@ -41,43 +41,43 @@ export default function MonthlyTable({ times, locale, cityName }: MonthlyTablePr
       </button>
 
       {isOpen && (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
+        <div className="overflow-x-auto -webkit-overflow-scrolling-touch">
+          <table className="w-full border-collapse min-w-[600px] sm:min-w-0" style={{ tableLayout: 'fixed' }}>
             <colgroup>
-              <col className="w-[22%] min-w-0" />
-              <col className="w-[13%]" />
-              <col className="w-[13%]" />
-              <col className="w-[13%]" />
-              <col className="w-[13%]" />
-              <col className="w-[13%]" />
-              <col className="w-[13%]" />
+              <col style={{ width: '24%' }} />
+              <col style={{ width: '12.5%' }} />
+              <col style={{ width: '12.5%' }} />
+              <col style={{ width: '12.5%' }} />
+              <col style={{ width: '12.5%' }} />
+              <col style={{ width: '12.5%' }} />
+              <col style={{ width: '12.5%' }} />
             </colgroup>
             <thead className="bg-navy-100 dark:bg-navy-darkest/70 border-b-2 border-gold-500 dark:border-gold-500/20">
               <tr>
-                <th className="px-2 py-2 text-left text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
+                <th className="px-2 sm:px-2 py-2.5 sm:py-2 text-left text-[10px] sm:text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
                   {t('date')}
                 </th>
-                <th className="px-1 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
+                <th className="px-2 sm:px-1 py-2.5 sm:py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
                   {tPrayers('imsak')}
                 </th>
-                <th className="px-1 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
+                <th className="px-2 sm:px-1 py-2.5 sm:py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
                   {tPrayers('gunes')}
                 </th>
-                <th className="px-1 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
+                <th className="px-2 sm:px-1 py-2.5 sm:py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
                   {tPrayers('ogle')}
                 </th>
-                <th className="px-1 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
+                <th className="px-2 sm:px-1 py-2.5 sm:py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
                   {tPrayers('ikindi')}
                 </th>
-                <th className="px-1 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
+                <th className="px-2 sm:px-1 py-2.5 sm:py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
                   {tPrayers('aksam')}
                 </th>
-                <th className="px-1 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
+                <th className="px-2 sm:px-1 py-2.5 sm:py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
                   {tPrayers('yatsi')}
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gold-500/10" style={{ lineHeight: '1.8' }}>
+            <tbody className="divide-y divide-gray-200 dark:divide-gold-500/10" style={{ lineHeight: '1.6' }}>
               {times.map((time, index) => {
                 const today = new Date().toLocaleDateString('tr-TR', {
                   day: '2-digit',
@@ -130,72 +130,70 @@ export default function MonthlyTable({ times, locale, cityName }: MonthlyTablePr
                         : 'hover:bg-gray-50 dark:hover:bg-gold-500/5'
                     } transition-colors`}
                   >
-                    <td className="px-2 py-2 text-xs text-navy-900 dark:text-gold-300 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                        {isToday && <span className="text-xs">👉</span>}
-                        <span className="font-semibold whitespace-nowrap text-xs">{time.date}</span>
-                        
-                        {/* Özel Günler - Kompakt inline badge'ler */}
-                        {specialDays.length > 0 && specialDays.map((dayInfo, i) => {
-                          // Tip'e göre emoji seç
-                          const emoji = dayInfo.type === 'kandil' ? '🌙' :
-                                      dayInfo.type === 'bayram' ? '🎉' :
-                                      dayInfo.type === 'holiday' ? '🇹🇷' :
-                                      dayInfo.type === 'ramazan' ? '🌙' : '📌';
-                          
-                          const bgColor = dayInfo.type === 'kandil' ? 'bg-purple-500' :
-                                        dayInfo.type === 'bayram' ? 'bg-green-500' :
-                                        dayInfo.type === 'holiday' ? 'bg-red-500' :
-                                        dayInfo.type === 'ramazan' ? 'bg-blue-500' :
-                                        'bg-rose-500';
-                          
-                          return (
-                            <span
-                              key={i}
-                              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 ${bgColor} text-white rounded text-[10px] font-bold leading-none`}
-                              title={dayInfo.text}
-                            >
-                              <span className="text-[10px]">{emoji}</span>
-                              <span className="truncate max-w-[80px]">{dayInfo.text}</span>
-                            </span>
-                          );
-                        })}
-
-                        {/* Ramazan Oruç Gün Sayısı */}
-                        {ramadanDayInfo && (
-                          <span 
-                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-indigo-500 text-white rounded text-[10px] font-bold leading-none"
-                            title={`Ramazan Orucu ${ramadanDayInfo}`}
-                          >
-                            <span className="text-[10px]">🌙</span>
-                            <span>{ramadanDayInfo}</span>
-                          </span>
+                    <td className="px-2 sm:px-2 py-2.5 sm:py-2 text-xs text-navy-900 dark:text-gold-300 min-w-0 align-top">
+                      <div className="flex flex-col gap-1.5 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {isToday && <span className="text-xs">👉</span>}
+                          <span className="font-semibold whitespace-nowrap text-xs">{time.date}</span>
+                        </div>
+                        {/* Özel Günler - mobilde alt satırda, taşma yok */}
+                        {(specialDays.length > 0 || ramadanDayInfo) && (
+                          <div className="flex flex-wrap gap-1">
+                            {specialDays.map((dayInfo, i) => {
+                              const emoji = dayInfo.type === 'kandil' ? '🌙' :
+                                          dayInfo.type === 'bayram' ? '🎉' :
+                                          dayInfo.type === 'holiday' ? '🇹🇷' :
+                                          dayInfo.type === 'ramazan' ? '🌙' : '📌';
+                              const bgColor = dayInfo.type === 'kandil' ? 'bg-purple-500' :
+                                            dayInfo.type === 'bayram' ? 'bg-green-500' :
+                                            dayInfo.type === 'holiday' ? 'bg-red-500' :
+                                            dayInfo.type === 'ramazan' ? 'bg-blue-500' : 'bg-rose-500';
+                              return (
+                                <span
+                                  key={i}
+                                  className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 ${bgColor} text-white rounded text-[10px] font-bold leading-none whitespace-nowrap max-w-full overflow-hidden text-ellipsis`}
+                                  title={dayInfo.text}
+                                  style={{ maxWidth: '120px' }}
+                                >
+                                  <span className="text-[10px] shrink-0">{emoji}</span>
+                                  <span className="truncate">{dayInfo.text}</span>
+                                </span>
+                              );
+                            })}
+                            {ramadanDayInfo && (
+                              <span
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-indigo-500 text-white rounded text-[10px] font-bold leading-none"
+                                title={`Ramazan Orucu ${ramadanDayInfo}`}
+                              >
+                                <span className="text-[10px]">🌙</span>
+                                <span>{ramadanDayInfo}</span>
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
-                      
-                      {/* Hicri tarih - altında küçük */}
                       {(time.hijriDateLong || time.hijriDate) && (
-                        <div className="text-[10px] text-navy-600 dark:text-gold-400/50 mt-0.5">
+                        <div className="text-[10px] text-navy-600 dark:text-gold-400/50 mt-1">
                           {time.hijriDateLong || formatHijriDate(time.hijriDate!)}
                         </div>
                       )}
                     </td>
-                    <td className="px-1 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono truncate">
+                    <td className="px-2 sm:px-1 py-2.5 sm:py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono whitespace-nowrap">
                       {time.imsak}
                     </td>
-                    <td className="px-1 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono truncate">
+                    <td className="px-2 sm:px-1 py-2.5 sm:py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono whitespace-nowrap">
                       {time.gunes}
                     </td>
-                    <td className="px-1 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono truncate">
+                    <td className="px-2 sm:px-1 py-2.5 sm:py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono whitespace-nowrap">
                       {time.ogle}
                     </td>
-                    <td className="px-1 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono truncate">
+                    <td className="px-2 sm:px-1 py-2.5 sm:py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono whitespace-nowrap">
                       {time.ikindi}
                     </td>
-                    <td className="px-1 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono truncate">
+                    <td className="px-2 sm:px-1 py-2.5 sm:py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono whitespace-nowrap">
                       {time.aksam}
                     </td>
-                    <td className="px-1 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono truncate">
+                    <td className="px-2 sm:px-1 py-2.5 sm:py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono whitespace-nowrap">
                       {time.yatsi}
                     </td>
                   </tr>

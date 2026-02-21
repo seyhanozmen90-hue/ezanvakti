@@ -453,7 +453,7 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
               <span className="text-2xl sm:text-3xl md:text-4xl">📅</span>
               <span className="text-navy-900 dark:text-transparent">{tPrayer('todaysPrayersWithCity', { city: `${city.name} / ${district.name}` })}</span>
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-4">
               {(['imsak', 'gunes', 'ogle', 'ikindi', 'aksam', 'yatsi'] as PrayerName[]).map((prayerName) => (
                 <PrayerTimeCard
                   key={prayerName}
@@ -466,9 +466,11 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
             </div>
           </div>
 
-          {/* Monthly Table */}
+          {/* Monthly Table - mobilde üstten daha fazla boşluk */}
           {monthlyTimes.length > 0 && (
-            <MonthlyTable times={monthlyTimes} locale={params.locale} cityName={`${city.name} / ${district.name}`} />
+            <div className="mt-8 sm:mt-6">
+              <MonthlyTable times={monthlyTimes} locale={params.locale} cityName={`${city.name} / ${district.name}`} />
+            </div>
           )}
 
           {/* Footer */}
