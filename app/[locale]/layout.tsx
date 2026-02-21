@@ -58,15 +58,6 @@ export async function generateMetadata({
       title: `${t('title')} | ${t('subtitle')}`,
       description: t('description'),
     },
-    viewport: {
-      width: 'device-width',
-      initialScale: 1,
-      maximumScale: 5,
-    },
-    themeColor: [
-      { media: '(prefers-color-scheme: light)', color: '#1e3a5f' },
-      { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
-    ],
     manifest: '/manifest.json',
     appleWebApp: {
       capable: true,
@@ -82,6 +73,16 @@ export async function generateMetadata({
     },
   };
 }
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#1e3a5f' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+  ],
+};
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));

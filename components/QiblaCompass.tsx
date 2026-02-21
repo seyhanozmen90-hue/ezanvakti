@@ -17,8 +17,7 @@ interface QiblaCompassProps {
 export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   const [view, setView] = useState<"pusula" | "harita">("pusula");
   const [rawHeading, setRawHeading] = useState<number | null>(null);
-  const [dialAngle, setDialAngle] = useState<number>(0);
-  const [kaabaAngle, setKaabaAngle] = useState<number>(0);
+  const [headingSmooth, setHeadingSmooth] = useState<number>(0);
   const [qiblaAngle, setQiblaAngle] = useState<number | null>(null);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [permission, setPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
@@ -31,16 +30,18 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   const stableTimerRef = useRef<number | null>(null);
   const hasVibratedRef = useRef<boolean>(false);
   const isAlignedRef = useRef<boolean>(false);
-  const smoothRef = useRef<number>(0);
-  const prevKaabaAngleRef = useRef<number>(0);
+  const headingSmoothRef = useRef<number>(0);
+  const lastRawRef = useRef<number | null>(null);
+  const angularErrorRef = useRef<number | null>(null);
 
-  // Kabe koordinatları (Mekke)
   const KAABA_LAT = 21.4225;
   const KAABA_LON = 39.8262;
-  const ENTER_THRESHOLD = 8;   // ±8° içinde hizalanma başlar
-  const EXIT_THRESHOLD = 18;   // ±18° dışına çıkınca hizalama biter
-  const STABLE_MS = 1200;      // bu kadar sabit kalmalı
-  const COMPASS_R = 130;       // kadran yarıçapı px
+  const ENTER_THRESHOLD = 5;   // ±5° hizalı say (instruction ile uyumlu)
+  const EXIT_THRESHOLD = 18;
+  const STABLE_MS = 1200;
+  const COMPASS_R = 130;
+  const SMOOTH_K = 0.14;       // low-pass 0.10–0.18 (yavaş, videodaki gibi)
+  const THROTTLE_MS = 50;      // ~20 FPS
 
   // Başlıca şehir koordinatları (Fallback) — qibla açısı her zaman hesaplanacak
   const cityCoordinates: Record<string, { lat: number; lon: number }> = {
@@ -56,15 +57,16 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     'Trabzon': { lat: 41.0015, lon: 39.7178 },
   };
 
-  // Açı farkını -180/+180 arasında normalize et (359°→1° sıçrama olmaz)
-  function normalizeDiff(a: number): number {
-    let d = a % 360;
-    if (d > 180) d -= 360;
-    if (d < -180) d += 360;
-    return d;
-  }
+  const normalize360 = useCallback((a: number) => ((a % 360) + 360) % 360, []);
 
-  // Great Circle — Kıble açısı (Kuzeyden saat yönünde derece)
+  // En kısa açı farkı -180..+180 (smoothing ve instruction için)
+  const shortestDiff = useCallback((target: number, current: number) => {
+    let d = normalize360(target - current);
+    if (d > 180) d -= 360;
+    return d;
+  }, [normalize360]);
+
+  // Great Circle — Kıble açısı 0..360 (Kuzeyden saat yönünde)
   const calculateQiblaAngle = useCallback((lat: number, lon: number): number => {
     const φ1 = (lat * Math.PI) / 180;
     const φ2 = (KAABA_LAT * Math.PI) / 180;
@@ -85,8 +87,8 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
   }, []);
 
-  // iOS motion/orientation permission (call before adding orientation listener)
-  const requestMotionPermission = async (): Promise<boolean> => {
+  // iOS: call on user gesture (button click) before subscribing to orientation
+  const requestMotionPermission = useCallback(async (): Promise<boolean> => {
     if (
       typeof DeviceOrientationEvent !== 'undefined' &&
       typeof (DeviceOrientationEvent as any).requestPermission === 'function'
@@ -106,7 +108,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
       }
     }
     return true;
-  };
+  }, []);
 
   const watchIdRef = useRef<number | null>(null);
 
@@ -151,18 +153,23 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     );
   };
 
-  // Device orientation — iOS webkitCompassHeading, Android 360-alpha
+  // Device heading: webkitCompassHeading (iOS) veya alpha + screen orientation (Android)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const handler = (e: DeviceOrientationEvent) => {
-      let h: number | null = null;
+      let raw: number | null = null;
       if (typeof (e as any).webkitCompassHeading === 'number' && Number.isFinite((e as any).webkitCompassHeading)) {
-        h = (e as any).webkitCompassHeading;
+        raw = (e as any).webkitCompassHeading;
       } else if (e.alpha != null && Number.isFinite(e.alpha)) {
-        h = (360 - e.alpha) % 360;
+        const screenAngle = (screen as any).orientation?.angle ?? (window as any).orientation ?? 0;
+        raw = (360 - (e.alpha + screenAngle)) % 360;
       }
-      if (h !== null && Number.isFinite(h)) setRawHeading(h);
+      if (raw !== null && Number.isFinite(raw)) {
+        const normalized = normalize360(raw);
+        lastRawRef.current = normalized;
+        setRawHeading(normalized);
+      }
     };
 
     if (!('DeviceOrientationEvent' in window)) {
@@ -178,7 +185,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
       window.removeEventListener('deviceorientationabsolute', handler, true);
       window.removeEventListener('deviceorientation', handler, true);
     };
-  }, []);
+  }, [normalize360]);
 
   useEffect(() => {
     return () => {
@@ -199,27 +206,43 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLat, userLon]);
 
-  // Smoothing — titreme önler; 360° sıçrama önler (referans formül)
+  // İlk ham değer geldiğinde smooth'u başlat
   useEffect(() => {
-    if (typeof qiblaAngle !== 'number' || rawHeading === null || !Number.isFinite(qiblaAngle) || !Number.isFinite(rawHeading)) return;
-    const raw = normalizeDiff(qiblaAngle - rawHeading);
-    if (!Number.isFinite(raw)) return;
+    if (rawHeading !== null && Number.isFinite(rawHeading)) {
+      headingSmoothRef.current = rawHeading;
+      setHeadingSmooth(rawHeading);
+    }
+  }, [rawHeading]);
 
-    let diff = raw - prevKaabaAngleRef.current;
-    if (diff > 180) diff -= 360;
-    if (diff < -180) diff += 360;
-
-    smoothRef.current = prevKaabaAngleRef.current + diff * 0.25;
-    prevKaabaAngleRef.current = smoothRef.current;
-
-    setKaabaAngle(smoothRef.current);
-    setDialAngle(-rawHeading);
-  }, [rawHeading, qiblaAngle]);
-
-  // Hizalama state — kaabaAngle üzerinden; EXIT 18° aşılınca kesin söner
+  // Smoothing: tek interval ~20 FPS, low-pass K (needle yavaş ve stabil)
   useEffect(() => {
-    if (!Number.isFinite(kaabaAngle)) return;
-    const abs = Math.abs(kaabaAngle);
+    const id = window.setInterval(() => {
+      const raw = lastRawRef.current;
+      if (raw == null) return;
+      const next = normalize360(
+        headingSmoothRef.current + SMOOTH_K * shortestDiff(raw, headingSmoothRef.current)
+      );
+      if (!Number.isFinite(next)) return;
+      headingSmoothRef.current = next;
+      setHeadingSmooth(next);
+    }, THROTTLE_MS);
+    return () => clearInterval(id);
+  }, [normalize360, shortestDiff]);
+
+  // angularError = shortestDiff(qiblaBearing, headingSmooth) — instruction ve hizalama
+  const angularError = useMemo(() => {
+    if (qiblaAngle == null || !Number.isFinite(headingSmooth)) return null;
+    return shortestDiff(qiblaAngle, headingSmooth);
+  }, [qiblaAngle, headingSmooth, shortestDiff]);
+
+  useEffect(() => {
+    angularErrorRef.current = angularError;
+  }, [angularError]);
+
+  // Hizalama state — angularError üzerinden
+  useEffect(() => {
+    if (angularError == null) return;
+    const abs = Math.abs(angularError);
 
     if (abs > EXIT_THRESHOLD) {
       if (stableTimerRef.current) {
@@ -237,7 +260,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     if (abs <= ENTER_THRESHOLD && !isAlignedRef.current && !stableTimerRef.current) {
       stableTimerRef.current = window.setTimeout(() => {
         stableTimerRef.current = null;
-        if (Math.abs(smoothRef.current) <= ENTER_THRESHOLD) {
+        if (angularErrorRef.current != null && Math.abs(angularErrorRef.current) <= ENTER_THRESHOLD) {
           isAlignedRef.current = true;
           setIsAligned(true);
           if (!hasVibratedRef.current) {
@@ -247,7 +270,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
         }
       }, STABLE_MS);
     }
-  }, [kaabaAngle]);
+  }, [angularError]);
 
   useEffect(() => () => {
     if (stableTimerRef.current) clearTimeout(stableTimerRef.current);
@@ -269,8 +292,8 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   }, [location]);
 
   const cityLabel = selectedCity || (location ? 'Konum' : '');
-  const safeDialAngle = Number.isFinite(dialAngle) ? dialAngle : 0;
-  const safeKaabaAngle = Number.isFinite(kaabaAngle) ? kaabaAngle : 0;
+  const qiblaBearing = qiblaAngle != null && Number.isFinite(qiblaAngle) ? qiblaAngle : 0;
+  const needleAngleDeg = Number.isFinite(headingSmooth) ? -headingSmooth : 0;
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -331,35 +354,35 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
           <div>
             <div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">PUSULA</div>
             <div className="font-bold text-[15px] text-gray-200 dark:text-gray-300">
-              {rawHeading != null ? `${Math.round(rawHeading)}°` : '—'}
+              {rawHeading != null ? `${Math.round(headingSmooth)}°` : '—'}
             </div>
           </div>
         </div>
 
-        {/* Yön talimatı — tek mesaj */}
+        {/* Yön talimatı — angularError ile görsele uyumlu */}
         <div
           className="text-center font-semibold mb-3 min-h-[24px] text-[15px]"
           style={{ color: isAligned ? '#fff' : '#22c55e' }}
         >
-          {isAligned ? '✅ Kıble yönündesiniz!' : (
-            isHeadingReady
-              ? (safeKaabaAngle > 0
-                  ? `▶ SAĞA — ${Math.abs(safeKaabaAngle).toFixed(1)}°`
-                  : `◀ SOLA — ${Math.abs(safeKaabaAngle).toFixed(1)}°`)
+          {isAligned ? '✅ Kıbleye baktınız' : (
+            isHeadingReady && angularError !== null
+              ? (Math.abs(angularError) <= ENTER_THRESHOLD
+                  ? 'Hizalı'
+                  : angularError > 0
+                    ? `Sağa dönün — ${Math.abs(angularError).toFixed(1)}°`
+                    : `Sola dönün — ${Math.abs(angularError).toFixed(1)}°`)
               : 'Pusula yükleniyor…'
           )}
         </div>
 
-        {/* Pusula container — 4 katman */}
+        {/* Pusula: kadran SABİT, Kabe sabit qiblaBearing'de, sadece ibre döner */}
         <div className="relative mx-auto touch-none select-none" style={{ width: COMPASS_R * 2 + 40, height: COMPASS_R * 2 + 40 }}>
-          {/* KATMAN 1: Kadran halkası — -deviceHeading döner */}
+          {/* KATMAN 1: Kadran SABİT (N/E/S/W dönmez) */}
           <div
             className="absolute inset-0 rounded-full border-[3px] transition-[border-color,background] duration-400"
             style={{
               borderColor: isAligned ? 'rgba(255,255,255,0.5)' : '#2d2d4e',
               background: isAligned ? 'rgba(255,255,255,0.1)' : '#0f0f23',
-              transform: `rotate(${safeDialAngle}deg)`,
-              transition: 'transform 0.25s linear',
             }}
           >
             <span className="absolute top-2 left-1/2 -translate-x-1/2 text-red-500 text-sm font-bold">N</span>
@@ -368,43 +391,44 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">E</span>
           </div>
 
-          {/* KATMAN 2: Kabe üçgeni — kaabaAngle döner, translateY(-R) ile üste */}
-          <div
-            className="absolute pointer-events-none"
-            style={{
-              top: '50%',
-              left: '50%',
-              width: 0,
-              height: 0,
-              transform: `rotate(${safeKaabaAngle}deg) translateY(-${COMPASS_R * 0.72}px)`,
-              transformOrigin: 'center center',
-              transition: 'transform 0.25s linear',
-              zIndex: 10,
-            }}
-          >
+          {/* KATMAN 2: Kabe işareti — kadranda qiblaBearing derecesinde SABİT (heading'e bağlı değil) */}
+          {qiblaAngle != null && (
             <div
-              className="absolute left-0 top-0"
+              className="absolute pointer-events-none"
               style={{
+                top: '50%',
+                left: '50%',
                 width: 0,
                 height: 0,
-                borderLeft: '14px solid transparent',
-                borderRight: '14px solid transparent',
-                borderBottom: `24px solid ${isAligned ? '#fff' : '#22c55e'}`,
-                marginLeft: -14,
-                marginTop: -24,
-              }}
-            />
-            <div
-              className="absolute left-0 top-0 text-center text-[10px] font-bold whitespace-nowrap"
-              style={{
-                color: isAligned ? '#fff' : '#22c55e',
-                marginLeft: -14,
-                marginTop: 2,
+                transform: `rotate(${qiblaBearing}deg) translateY(-${COMPASS_R}px) rotate(-${qiblaBearing}deg)`,
+                transformOrigin: 'center center',
+                zIndex: 10,
               }}
             >
-              KABE
+              <div
+                className="absolute left-0 top-0"
+                style={{
+                  width: 0,
+                  height: 0,
+                  borderLeft: '14px solid transparent',
+                  borderRight: '14px solid transparent',
+                  borderBottom: `24px solid ${isAligned ? '#fff' : '#22c55e'}`,
+                  marginLeft: -14,
+                  marginTop: -24,
+                }}
+              />
+              <div
+                className="absolute left-0 top-0 text-[10px] font-bold whitespace-nowrap text-center"
+                style={{
+                  color: isAligned ? '#fff' : '#22c55e',
+                  marginLeft: -14,
+                  marginTop: 2,
+                }}
+              >
+                KABE
+              </div>
             </div>
-          </div>
+          )}
 
           {/* KATMAN 3: Merkez nokta */}
           <div
@@ -416,14 +440,18 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
             }}
           />
 
-          {/* KATMAN 4: Sabit referans çubuğu — 12 o'clock, hareket etmez */}
+          {/* KATMAN 4: İbre (North pointer) — sadece bu döner. needleAngleDeg = -headingSmooth: cihaz kuzeye bakınca ibre 12'de, ekranda ibre her zaman coğrafi kuzeyi gösterir. */}
           <div
-            className="absolute left-1/2 -translate-x-1/2 rounded z-[20]"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[20]"
             style={{
-              top: 6,
               width: 4,
-              height: 18,
-              background: isAligned ? '#fff' : '#9ca3af',
+              height: 24,
+              marginTop: -24,
+              background: isAligned ? '#fff' : '#ef4444',
+              borderRadius: 2,
+              transform: `rotate(${needleAngleDeg}deg)`,
+              transformOrigin: 'center bottom',
+              transition: 'transform 200ms linear',
             }}
           />
         </div>
