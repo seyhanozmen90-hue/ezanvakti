@@ -25,24 +25,20 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [needsPermission, setNeedsPermission] = useState<boolean>(false);
   const [selectedCity, setSelectedCity] = useState<string>('');
-  const [locked, setLocked] = useState<boolean>(false);
-  const [isAlignedStable, setIsAlignedStable] = useState<boolean>(false);
+  const [isAligned, setIsAligned] = useState<boolean>(false);
 
-  const inRangeSinceRef = useRef<number | null>(null);
   const stableTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastHeadingRef = useRef<number>(0);
-  const hasVibratedRef = useRef<boolean>(false);  // titreşim kilidi — bir kez titredi mi
-  const smoothedDeviationRef = useRef<number>(0);
+  const hasConfirmedRef = useRef<boolean>(false);  // titreşim kilidi
+  const isAlignedRef = useRef<boolean>(false);    // state sync — EXIT'te kesin false
+  const smoothedRef = useRef<number>(0);
 
   // Kabe koordinatları (Mekke) — Great Circle hesaplama için
   const KAABA_LAT = 21.4225;
   const KAABA_LON = 39.8262;
-  const ENTER_THRESHOLD = 8;   // ±8° içinde hizalandı say
-  const EXIT_THRESHOLD = 12;   // ±12° dışında hizalamayı boz
-  const UNLOCK_THRESHOLD = 20; // >20° uzaklaşınca titreşim kilidi açılsın
-  const STABLE_MS = 1200;      // 1.2 saniye kararlı kalmalı
-  const THRESHOLD_DEG = ENTER_THRESHOLD;
-  const HOLD_MS = 1200;
+  const ENTER_DEG = 8;    // bu kadar yakınsa hizalanma başlar
+  const EXIT_DEG = 20;    // bu kadar uzaklaşırsa hizalanma biter — MUTLAKA ÇALIŞMALI
+  const STABLE_MS = 1400;  // bu kadar sabit kalmalı
+  const COMPASS_RADIUS = 130; // Kabe ikonu translateY(-R) px
 
   // Başlıca şehir koordinatları (Fallback) — qibla açısı her zaman hesaplanacak
   const cityCoordinates: Record<string, { lat: number; lon: number }> = {
@@ -58,27 +54,30 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     'Trabzon': { lat: 41.0015, lon: 39.7178 },
   };
 
-  // Normalize angle to 0..360
+  // Açıyı −180 ile +180 arası normalize et (359°→1° geçişte sıçrama olmaz)
   function normalizeAngle(angle: number): number {
+    let a = angle % 360;
+    if (a > 180) a -= 360;
+    if (a < -180) a += 360;
+    return a;
+  }
+
+  // 0..360 için (heading display)
+  function normalizeAngle360(angle: number): number {
     return (angle + 360) % 360;
   }
 
-  // Shortest rotation in [-180, 180] (prevents compass jump)
-  function shortestRotation(angle: number): number {
-    if (angle > 180) return angle - 360;
-    if (angle < -180) return angle + 360;
-    return angle;
+  // Smoothing — titreme önler; rawDeviation -180..+180
+  function updateSmoothed(rawDeviation: number): number {
+    const normalized = normalizeAngle(rawDeviation);
+    smoothedRef.current = smoothedRef.current * 0.72 + normalized * 0.28;
+    return smoothedRef.current;
   }
 
-  // Shortest angle difference (for alignment check)
-  const shortestAngleDiff = (target: number, current: number): number => {
-    return shortestRotation(normalizeAngle(target - current));
-  };
-
-  // Linear interpolation for smooth heading
+  // Linear interpolation for smooth heading (dial)
   const lerp = (start: number, end: number, t: number): number => {
-    let diff = shortestRotation(normalizeAngle(end - start));
-    return normalizeAngle(start + diff * t);
+    let diff = normalizeAngle(end - start);
+    return normalizeAngle360(start + diff * t);
   };
 
   // Great Circle — Kıble açısı (Kuzeyden saat yönünde derece)
@@ -88,8 +87,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     const Δλ = ((KAABA_LON - lon) * Math.PI) / 180;
     const y = Math.sin(Δλ) * Math.cos(φ2);
     const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-    let bearing = (Math.atan2(y, x) * 180) / Math.PI;
-    return (bearing + 360) % 360;
+    return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
   }, []);
 
   // SVG arc: merkez (cx,cy), yarıçap r, başlangıç ve bitiş açıları (derece, 0=üst, saat yönü)
@@ -145,8 +143,8 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     }
 
     setErrorMessage('');
-    setLocked(false);
-    inRangeSinceRef.current = null;
+    isAlignedRef.current = false;
+    setIsAligned(false);
 
     if (watchIdRef.current != null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
@@ -169,16 +167,18 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     );
   };
 
-  // True north: prefer webkitCompassHeading (iOS), else 360 - alpha (Android); always normalize
+  // Device orientation — iOS webkitCompassHeading, Android absolute/fallback
   const getCompassHeading = useCallback((event: DeviceOrientationEvent): number | null => {
-    const raw =
-      (event as any).webkitCompassHeading != null
-        ? (event as any).webkitCompassHeading
-        : event.alpha != null
-          ? 360 - event.alpha
-          : null;
-    if (raw == null) return null;
-    return normalizeAngle(raw);
+    let heading: number | null = null;
+    if (typeof (event as any).webkitCompassHeading === 'number') {
+      heading = (event as any).webkitCompassHeading;
+    } else if (event.absolute === true && event.alpha != null) {
+      heading = (360 - event.alpha) % 360;
+    } else if (event.alpha != null) {
+      heading = (360 - event.alpha) % 360;
+    }
+    if (heading !== null && !isNaN(heading)) return normalizeAngle360(heading);
+    return null;
   }, []);
 
   useEffect(() => {
@@ -186,10 +186,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
 
     const handleOrientation = (event: DeviceOrientationEvent) => {
       const h = getCompassHeading(event);
-      if (h != null) {
-        setHeading(h);
-        lastHeadingRef.current = h;
-      }
+      if (h != null) setHeading(h);
     };
 
     if (!('DeviceOrientationEvent' in window)) {
@@ -224,133 +221,74 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLat, userLon]);
 
-  // Smooth heading with lerp
+  // Smooth heading with lerp (dial rotation)
   useEffect(() => {
     if (heading === null) return;
-    
     const interval = setInterval(() => {
-      setSmoothHeading(prev => lerp(prev, heading, 0.15));
-    }, 16); // ~60fps
-
+      setSmoothHeading(prev => lerp(prev, heading!, 0.15));
+    }, 16);
     return () => clearInterval(interval);
   }, [heading, lerp]);
 
-  // Yön değiştiğinde kilidi otomatik aç
-  useEffect(() => {
-    if (!locked || heading === null) return;
-    
-    const headingDiff = Math.abs(normalizeAngle(heading - lastHeadingRef.current));
-    
-    // Eğer yön 10 dereceden fazla değiştiyse kilidi aç
-    if (headingDiff > 10) {
-      setLocked(false);
-      inRangeSinceRef.current = null;
-    }
-  }, [heading, locked]);
-
-  // Sapma: -180..+180 (pozitif = Kıble sağda → sağa dön, negatif = sola dön)
+  // Sapma: -180..+180 (pozitif = Kıble sağda)
   const deviation = useMemo(() => {
     if (typeof qiblaAngle !== 'number' || typeof heading !== 'number') return null;
-    return shortestRotation(normalizeAngle(qiblaAngle - heading));
+    return normalizeAngle(qiblaAngle - heading);
   }, [qiblaAngle, heading]);
 
-  const error = useMemo(() => (deviation != null ? Math.abs(deviation) : null), [deviation]);
+  // Smoothed deviation for display + alignment; state so UI updates
+  const [smoothedDeviation, setSmoothedDeviation] = useState(0);
 
-  // Qibla rotation: shortest path, no jump; compass (Kabe) uses this
-  const rotation = useMemo(() => {
-    if (qiblaAngle == null || smoothHeading == null) return 0;
-    return shortestRotation(normalizeAngle(qiblaAngle - smoothHeading));
-  }, [qiblaAngle, smoothHeading]);
-
-  // Display angle 0..360 for CSS rotate (Kabe position)
-  const relativeAngle = useMemo(() => {
-    const r = rotation;
-    return r < 0 ? r + 360 : r;
-  }, [rotation]);
-
-  const isHeadingReady = heading !== null;
-
-  const inZoneNotStable = deviation != null && Math.abs(deviation) <= ENTER_THRESHOLD && !isAlignedStable;
-
-  const statusText = (() => {
-    if (error == null) return '';
-    if (locked) return `✅ Kıble bulundu (sapma: ${error.toFixed(1)}°)`;
-    if (isAlignedStable) return '✅ Kıble yönündesiniz!';
-    if (inZoneNotStable) return 'Hedef bölgede, 1.5 sn sabit tutun...';
-    return `Sapma: ${error.toFixed(1)}°`;
-  })();
-
-  const statusColor = useMemo(() => {
-    if (error == null) return "gray";
-    if (locked || isAlignedStable) return "green";
-    if (inZoneNotStable) return "yellow";
-    return "gray";
-  }, [error, locked, isAlignedStable, inZoneNotStable]);
-
-  // Smoothing (0.75/0.25) + hysteresis + titreşim kilidi; >20° uzaklaşınca kilit açılır
+  // Alignment state — EXIT önce (abs > EXIT_DEG → yeşil söner), timer sadece EXIT'te sıfırlanır
   useEffect(() => {
     if (deviation == null) return;
-    smoothedDeviationRef.current = smoothedDeviationRef.current * 0.75 + deviation * 0.25;
-    const smooth = Math.abs(smoothedDeviationRef.current);
+    const smoothed = updateSmoothed(deviation);
+    setSmoothedDeviation(smoothed);
+    const abs = Math.abs(smoothed);
 
-    // Titreşim kilidi: bir kez titrediyse, uzaklaşana kadar tekrar tetikleme
-    if (hasVibratedRef.current) {
-      if (smooth > UNLOCK_THRESHOLD) {
-        hasVibratedRef.current = false;
-        if (stableTimerRef.current) {
-          clearTimeout(stableTimerRef.current);
-          stableTimerRef.current = null;
-        }
-        setIsAlignedStable(false);
+    // --- ÇIKIŞ KONTROLÜ — HER ZAMAN ÇALIŞIR ---
+    if (abs > EXIT_DEG) {
+      if (stableTimerRef.current) {
+        clearTimeout(stableTimerRef.current);
+        stableTimerRef.current = null;
       }
+      if (isAlignedRef.current) {
+        isAlignedRef.current = false;
+        setIsAligned(false);
+      }
+      if (abs > 30) hasConfirmedRef.current = false;
       return;
     }
 
-    if (!isAlignedStable && smooth <= ENTER_THRESHOLD) {
-      if (stableTimerRef.current == null) {
+    // --- GİRİŞ KONTROLÜ --- (timer küçük titremeyle sıfırlanmaz)
+    if (abs <= ENTER_DEG && !isAlignedRef.current) {
+      if (!stableTimerRef.current) {
         stableTimerRef.current = window.setTimeout(() => {
-          setIsAlignedStable(true);
-          if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-            navigator.vibrate([100, 60, 250]);
-          }
-          hasVibratedRef.current = true;
           stableTimerRef.current = null;
+          if (Math.abs(smoothedRef.current) <= ENTER_DEG) {
+            isAlignedRef.current = true;
+            setIsAligned(true);
+            if (!hasConfirmedRef.current) {
+              navigator.vibrate?.([120, 70, 280]);
+              hasConfirmedRef.current = true;
+            }
+          }
         }, STABLE_MS);
       }
-    } else if (!isAlignedStable && smooth > EXIT_THRESHOLD) {
-      if (stableTimerRef.current) {
-        clearTimeout(stableTimerRef.current);
-        stableTimerRef.current = null;
-      }
-    } else if (isAlignedStable && smooth > EXIT_THRESHOLD) {
-      if (stableTimerRef.current) {
-        clearTimeout(stableTimerRef.current);
-        stableTimerRef.current = null;
-      }
-      setIsAlignedStable(false);
     }
-  }, [deviation, isAlignedStable]);
+  }, [deviation]);
 
-  useEffect(() => {
-    return () => {
-      if (stableTimerRef.current) clearTimeout(stableTimerRef.current);
-    };
+  useEffect(() => () => {
+    if (stableTimerRef.current) clearTimeout(stableTimerRef.current);
   }, []);
 
-  // Kilitleme: onaylandıktan sonra HOLD_MS süre tutunca kilit (opsiyonel)
-  useEffect(() => {
-    if (locked) return;
-    if (error == null) return;
-    if (isAlignedStable && error <= ENTER_THRESHOLD) {
-      if (!inRangeSinceRef.current) inRangeSinceRef.current = Date.now();
-      if (Date.now() - inRangeSinceRef.current >= HOLD_MS) setLocked(true);
-    } else {
-      inRangeSinceRef.current = null;
-    }
-  }, [error, locked, isAlignedStable]);
+  // Kabe ikonu: kaabaRotation = normalizeAngle(qibla - deviceHeading); translateY(-R)
+  const kaabaRotation = useMemo(() => {
+    if (qiblaAngle == null || smoothHeading == null) return 0;
+    return normalizeAngle(qiblaAngle - smoothHeading);
+  }, [qiblaAngle, smoothHeading]);
 
-  // UI için: hizalı say (yeşil göster) sadece kararlı onaylandığında
-  const isAligned = isAlignedStable;
+  const isHeadingReady = heading !== null;
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -370,18 +308,20 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
           </p>
         )}
         
-        {/* Hizalama mesajı — "Kırmızı oku Kabe'ye getir" */}
-        {isHeadingReady && view === 'pusula' && deviation !== null && (
-          <div className={`alignment-msg mt-3 rounded-xl px-5 py-3 text-center text-[15px] font-semibold transition-all duration-400 ${isAligned ? 'alignment-msg--aligned' : ''}`}>
-            {isAligned
-              ? '✅ Kıble yönündesiniz!'
-              : `Kırmızı oku Kabe'ye getirin — Sapma: ${Math.abs(deviation).toFixed(1)}°`}
-          </div>
-        )}
-        {isHeadingReady && view === 'pusula' && statusText && !isAligned && (
-          <div className={`qiblaBadge qiblaBadge--${statusColor} mt-2`}>
-            {statusText}
-          </div>
+        {/* SADECE BİR MESAJ — çelişki yok */}
+        {isHeadingReady && view === 'pusula' && (
+          isAligned ? (
+            <div className="alignment-msg alignment-msg--aligned mt-3 rounded-xl px-5 py-3 text-center text-[15px] font-semibold">
+              ✅ Kıble yönündesiniz!
+            </div>
+          ) : (
+            <div className="alignment-msg mt-3 rounded-xl px-5 py-3 text-center text-[15px] font-semibold">
+              {Math.abs(smoothedDeviation) < 30
+                ? `Kırmızı oku Kabe'ye getirin — ${Math.abs(smoothedDeviation).toFixed(1)}°`
+                : `${smoothedDeviation > 0 ? '→ Sağa' : '← Sola'} dönün — ${Math.abs(smoothedDeviation).toFixed(1)}°`
+              }
+            </div>
+          )
         )}
       </div>
 
@@ -424,8 +364,8 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
       <div className="qiblaCompassWrap">
       {/* Pusula çerçevesi — hizalanda yeşil border + pulse */}
       <div className={`compass-frame relative w-full aspect-square mb-8 rounded-full overflow-visible ${isAligned ? 'compass-frame--aligned' : ''}`}>
-        <div className={`compassRing ${locked ? 'isLocked' : isAligned ? 'isInRange' : ''}`} />
-        <div className={`compassInner ${locked ? 'isLocked' : isAligned ? 'isInRange' : ''}`} />
+        <div className={`compassRing ${isAligned ? 'isInRange' : ''}`} />
+        <div className={`compassInner ${isAligned ? 'isInRange' : ''}`} />
 
         {/* 1. Kadran — cihaz yönüne göre döner (N/S/E/W gerçek yönleri gösterir); ibre yok */}
         <div
@@ -460,28 +400,32 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
           </svg>
         </div>
 
-        {/* 2. Kabe ikonu — kadran dışında; rotation = shortestRotation(normalizeAngle(qibla - heading)) */}
+        {/* 2. Kabe ikonu — translateY(-R) ile ÜSTE (eksi kritik!) */}
         {qiblaAngle != null && (
           <div
-            className="absolute inset-8 flex items-center justify-center pointer-events-none"
+            className="absolute pointer-events-none"
             style={{
-              transform: `rotate(${relativeAngle}deg)`,
+              top: '50%',
+              left: '50%',
+              width: 40,
+              height: 40,
+              marginLeft: -20,
+              marginTop: -20,
               transformOrigin: 'center center',
+              transform: `rotate(${kaabaRotation}deg) translateY(-${COMPASS_RADIUS}px)`,
               transition: 'transform 0.25s linear',
-              zIndex: 10,
+              zIndex: 20,
             }}
           >
-            <div className="w-full h-full flex items-center justify-center" style={{ transform: 'translateY(-50%)' }}>
-              <span
-                className={`text-4xl drop-shadow-lg block transition-all duration-300 ${isAligned ? 'qibla-indicator--found' : ''}`}
-                style={{
-                  transform: `rotate(${-relativeAngle}deg)${isAligned ? ' scale(1.15)' : ''}`,
-                  filter: isAligned ? 'drop-shadow(0 0 8px rgba(34, 197, 94, 0.9))' : undefined,
-                }}
-              >
-                🕋
-              </span>
-            </div>
+            <span
+              className={`text-4xl drop-shadow-lg block ${isAligned ? 'qibla-indicator--found' : ''}`}
+              style={{
+                transform: `rotate(${-kaabaRotation}deg)${isAligned ? ' scale(1.15)' : ''}`,
+                filter: isAligned ? 'drop-shadow(0 0 8px rgba(34, 197, 94, 0.9))' : undefined,
+              }}
+            >
+              🕋
+            </span>
           </div>
         )}
 
@@ -496,7 +440,7 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
           </svg>
         </div>
 
-        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full shadow-lg transition-colors duration-300 z-[6] ${locked ? 'bg-green-600' : 'bg-primary-600'}`} />
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full shadow-lg transition-colors duration-300 z-[6] ${isAligned ? 'bg-green-600' : 'bg-primary-600'}`} />
       </div>
 
 
@@ -557,12 +501,11 @@ export default function QiblaCompass({ userLat, userLon }: QiblaCompassProps) {
       )}
 
       
-      {/* Kıble bulundu kartı */}
-      {location && qiblaAngle !== null && locked && (
+      {/* Kıble bulundu kartı — sadece isAligned true iken */}
+      {isAligned && (
         <div className="found-card mt-5 text-center py-5 px-5 border-2 border-green-500 dark:border-green-600 rounded-2xl bg-green-50 dark:bg-green-900/20">
-          <span className="text-4xl block mb-2">✅</span>
-          <h2 className="text-xl font-bold text-green-700 dark:text-green-400 mb-1">Kıble Bulundu!</h2>
-          <p className="text-green-600 dark:text-green-500 font-medium">Kırmızı ok Kabe yönünü gösteriyor</p>
+          <div className="text-4xl mb-2">✅</div>
+          <h3 className="text-xl font-bold text-green-700 dark:text-green-400">Kıble Bulundu!</h3>
         </div>
       )}
 
