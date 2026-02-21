@@ -31,8 +31,9 @@ export default function CountdownTimer({ targetTime, prayerName, locale }: Count
   }
 
   if (timeRemaining.totalSeconds <= 0) {
+    // Vakit geldi - sayfa otomatik yenilenecek
     return (
-      <div className="text-2xl font-bold text-navy-900 dark:text-green-400">
+      <div className="text-2xl font-bold text-navy-900 dark:text-green-400 animate-pulse">
         🕌 {t('timeEntered')}
       </div>
     );

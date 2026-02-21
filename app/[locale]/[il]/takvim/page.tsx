@@ -3,26 +3,55 @@ import { notFound } from 'next/navigation';
 import CalendarLeaf from '@/components/CalendarLeaf';
 import { getCalendarDay } from '@/data/calendar-2026-official';
 import { getCityBySlug } from '@/lib/cities-helper';
+import { hasCoordsExist } from '@/lib/geo/tr';
+import { getPrayerTimes } from '@/lib/services/prayerTimesService';
+import { getDayDuration, getNightDuration, getDayChangeMinutes } from '@/lib/calendar';
 
 interface PageProps {
   params: { locale: string; il: string };
 }
 
-export default function TakvimPage({ params }: PageProps) {
-  // Şehir bilgisini URL'den al
+export default async function TakvimPage({ params }: PageProps) {
   const city = getCityBySlug(params.il);
-  
-  if (!city) {
-    notFound();
-  }
+  if (!city) notFound();
 
-  // Bugünün tarihi
   const today = new Date();
   const todayString = today.toISOString().split('T')[0];
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayString = yesterday.toISOString().split('T')[0];
   const dayData = getCalendarDay(todayString);
-  
+
+  let times: { imsak: string; gunes: string; ogle: string; ikindi: string; aksam: string; yatsi: string } | undefined;
+  let dayDuration: { hours: number; minutes: number } | undefined;
+  let nightDuration: { hours: number; minutes: number } | undefined;
+  let dayChangeMinutes: number | undefined;
+
+  if (hasCoordsExist(city.slug)) {
+    try {
+      const [todayResult, yesterdayResult] = await Promise.all([
+        getPrayerTimes({ city_slug: city.slug, date: todayString }),
+        getPrayerTimes({ city_slug: city.slug, date: yesterdayString }),
+      ]);
+      const t = todayResult.timings;
+      times = {
+        imsak: t.fajr,
+        gunes: t.sunrise,
+        ogle: t.dhuhr,
+        ikindi: t.asr,
+        aksam: t.maghrib,
+        yatsi: t.isha,
+      };
+      dayDuration = getDayDuration(t.sunrise, t.maghrib);
+      nightDuration = getNightDuration(t.maghrib, t.fajr);
+      dayChangeMinutes = getDayChangeMinutes(t.sunrise, yesterdayResult.timings.sunrise);
+    } catch (_) {
+      // API hatasında CalendarLeaf varsayılan değerleri kullanır
+    }
+  }
+
   return (
-    <div className="container mx-auto px-4 py-12 max-w-6xl">
+    <div className="container mx-auto px-4 py-12 max-w-6xl min-w-0 overflow-x-hidden">
       {/* Header */}
       <div className="text-center mb-12">
         <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4 flex items-center justify-center gap-4">
@@ -42,9 +71,17 @@ export default function TakvimPage({ params }: PageProps) {
         </a>
       </div>
 
-      {/* Bugünün Takvim Yaprağı */}
+      {/* Bugünün Takvim Yaprağı - şehre göre dinamik vakitler */}
       <div className="mb-12">
-        <CalendarLeaf date={today} cityLabel={city.name} calendarData={dayData} />
+        <CalendarLeaf
+          date={today}
+          cityLabel={city.name}
+          calendarData={dayData}
+          times={times}
+          dayDuration={dayDuration}
+          nightDuration={nightDuration}
+          dayChangeMinutes={dayChangeMinutes}
+        />
       </div>
 
       {/* Ek Bilgiler - Detaylı Takvim Bilgileri */}

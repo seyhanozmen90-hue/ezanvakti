@@ -3,29 +3,56 @@ import { notFound } from 'next/navigation';
 import CalendarLeaf from '@/components/CalendarLeaf';
 import { getCalendarDay } from '@/data/calendar-2026-official';
 import { getCityBySlug } from '@/lib/cities-helper';
+import { hasCoordsExist } from '@/lib/geo/tr';
+import { getPrayerTimes } from '@/lib/services/prayerTimesService';
+import { getDayDuration, getNightDuration, getDayChangeMinutes } from '@/lib/calendar';
 
 interface PageProps {
   params: { locale: string; il: string; year: string; month: string; day: string };
 }
 
-export default function DayPage({ params }: PageProps) {
-  // Şehir bilgisini URL'den al
+export default async function DayPage({ params }: PageProps) {
   const city = getCityBySlug(params.il);
-  
-  if (!city) {
-    notFound();
-  }
+  if (!city) notFound();
 
   const year = parseInt(params.year);
   const month = parseInt(params.month);
   const day = parseInt(params.day);
-  
   const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  const dayData = getCalendarDay(dateString);
   const date = new Date(year, month - 1, day);
+  const yesterday = new Date(date);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayString = yesterday.toISOString().split('T')[0];
+  const dayData = getCalendarDay(dateString);
+
+  let times: { imsak: string; gunes: string; ogle: string; ikindi: string; aksam: string; yatsi: string } | undefined;
+  let dayDuration: { hours: number; minutes: number } | undefined;
+  let nightDuration: { hours: number; minutes: number } | undefined;
+  let dayChangeMinutes: number | undefined;
+
+  if (hasCoordsExist(city.slug)) {
+    try {
+      const [dayResult, prevResult] = await Promise.all([
+        getPrayerTimes({ city_slug: city.slug, date: dateString }),
+        getPrayerTimes({ city_slug: city.slug, date: yesterdayString }),
+      ]);
+      const t = dayResult.timings;
+      times = {
+        imsak: t.fajr,
+        gunes: t.sunrise,
+        ogle: t.dhuhr,
+        ikindi: t.asr,
+        aksam: t.maghrib,
+        yatsi: t.isha,
+      };
+      dayDuration = getDayDuration(t.sunrise, t.maghrib);
+      nightDuration = getNightDuration(t.maghrib, t.fajr);
+      dayChangeMinutes = getDayChangeMinutes(t.sunrise, prevResult.timings.sunrise);
+    } catch (_) {}
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
+    <div className="container mx-auto px-4 py-8 max-w-5xl min-w-0 overflow-x-hidden">
       {/* Navigasyon */}
       <div className="mb-8 flex flex-wrap gap-3 justify-center">
         <Link 
@@ -44,9 +71,17 @@ export default function DayPage({ params }: PageProps) {
         </Link>
       </div>
 
-      {/* Takvim Yaprağı */}
+      {/* Takvim Yaprağı - şehre göre dinamik vakitler */}
       <div className="mb-6">
-        <CalendarLeaf date={date} cityLabel={city.name} calendarData={dayData} />
+        <CalendarLeaf
+          date={date}
+          cityLabel={city.name}
+          calendarData={dayData}
+          times={times}
+          dayDuration={dayDuration}
+          nightDuration={nightDuration}
+          dayChangeMinutes={dayChangeMinutes}
+        />
       </div>
 
       {/* Yazdır ve Paylaş Butonları */}

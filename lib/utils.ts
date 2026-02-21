@@ -35,7 +35,6 @@ export function getNextPrayerTime(times: PrayerTime): NextPrayer | null {
   if (!times) return null;
 
   const now = new Date();
-  const currentTime = now.getHours() * 60 + now.getMinutes();
 
   const prayers: Array<{ name: PrayerName; time: string }> = [
     { name: 'imsak', time: times.imsak },
@@ -46,11 +45,14 @@ export function getNextPrayerTime(times: PrayerTime): NextPrayer | null {
     { name: 'yatsi', time: times.yatsi },
   ];
 
+  // Bugünkü tarihle tüm vakitleri Date objesine çevir
   for (const prayer of prayers) {
     const [hours, minutes] = prayer.time.split(':').map(Number);
-    const prayerTime = hours * 60 + minutes;
+    const prayerDate = new Date();
+    prayerDate.setHours(hours, minutes, 0, 0);
 
-    if (prayerTime > currentTime) {
+    // Eğer vakit henüz gelmemişse, bu bir sonraki vakit
+    if (prayerDate > now) {
       return {
         name: prayer.name,
         time: prayer.time,
@@ -69,20 +71,34 @@ export function getNextPrayerTime(times: PrayerTime): NextPrayer | null {
 
 /**
  * Kalan süreyi hesaplar
+ * Timezone-aware hesaplama ile gece yarısı geçişlerinde hatasız çalışır
  */
 export function calculateTimeRemaining(targetTime: string): TimeRemaining {
   const now = new Date();
   const [hours, minutes] = targetTime.split(':').map(Number);
   
+  // Hedef zamanı bugünün tarihi ile birleştir
   const target = new Date();
   target.setHours(hours, minutes, 0, 0);
 
-  // Eğer hedef saat geçmişse, yarına ayarla
-  if (target < now) {
+  // Eğer hedef saat geçmişse veya tam şu an ise, yarına ayarla
+  if (target <= now) {
     target.setDate(target.getDate() + 1);
   }
 
+  // Milisaniye farkını hesapla
   const diff = target.getTime() - now.getTime();
+  
+  // Negatif değer kontrolü (güvenlik için)
+  if (diff < 0) {
+    return {
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+      totalSeconds: 0,
+    };
+  }
+
   const totalSeconds = Math.floor(diff / 1000);
   
   const hrs = Math.floor(totalSeconds / 3600);
@@ -181,6 +197,38 @@ export function formatDate(date: Date): string {
     month: 'long',
     day: 'numeric',
   });
+}
+
+/**
+ * Hicri tarihten ay ismini çıkarır
+ */
+export function getHijriMonthFromDate(hijriDate?: string): string | null {
+  if (!hijriDate) return null;
+  
+  // Hicri tarih formatı: "13 Şaban 1447" veya benzeri
+  const monthNames = [
+    'Muharrem', 'Safer', 'Rebiülevvel', 'Rebiülahir',
+    'Cemaziyelevvel', 'Cemaziyelahir', 'Recep', 'Şaban',
+    'Ramazan', 'Şevval', 'Zilkade', 'Zilhicce'
+  ];
+  
+  for (const month of monthNames) {
+    if (hijriDate.includes(month)) {
+      return month;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Şu an Ramazan ayında mıyız?
+ */
+export function isRamadan(hijriDate?: string): boolean {
+  if (!hijriDate) return false;
+  
+  const month = getHijriMonthFromDate(hijriDate);
+  return month === 'Ramazan';
 }
 
 /**

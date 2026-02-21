@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { getTodayPrayerTimes, getMonthlyPrayerTimes } from '@/lib/api';
 import { getCityBySlug, getAllCities } from '@/lib/cities-helper';
-import { getNextPrayerTime, formatDate, formatHijriDate } from '@/lib/utils';
+import { getNextPrayerTime, formatDate, formatHijriDate, isRamadan } from '@/lib/utils';
 import { getPrayerTimes } from '@/lib/services/prayerTimesService';
 import { hasCoordsExist } from '@/lib/geo/tr';
 import CountdownTimer from '@/components/CountdownTimer';
@@ -13,6 +13,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import CitySelector from '@/components/CitySelector';
 import JsonLd from '@/components/JsonLd';
 import CityComingSoon from '@/components/CityComingSoon';
+import IftarCard from '@/components/IftarCard';
 import { PrayerName, PrayerTime } from '@/lib/types';
 
 // Force dynamic rendering (SSR) - no static generation
@@ -238,6 +239,9 @@ export default async function CityPage({ params }: CityPageProps) {
 
   const nextPrayer = getNextPrayerTime(todayTimes);
   const currentDate = new Date();
+  
+  // Ramazan ayı kontrolü
+  const isRamadanMonth = isRamadan(todayTimes.hijriDate);
 
   // JSON-LD Structured Data - Daha detaylı namaz vakitleri schema
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
@@ -366,7 +370,7 @@ export default async function CityPage({ params }: CityPageProps) {
               {city.name} Namaz Vakitleri – {formatDate(currentDate)}
             </h1>
             <p className="text-center text-navy-700 dark:text-gold-300/80 text-xs sm:text-sm mb-4">
-              Diyanet İşleri Başkanlığı verilerine göre güncel ve doğru namaz saatleri
+              ℹ️ Namaz vakitleri, hesaplama yöntemlerine bağlı olarak birkaç dakikalık farklılık gösterebilir.
             </p>
 
             {/* Location & Date Card */}
@@ -412,6 +416,15 @@ export default async function CityPage({ params }: CityPageProps) {
               </div>
             </div>
           </header>
+
+          {/* İftar Vakti - Ramazan Ayında Göster */}
+          {isRamadanMonth && (
+            <IftarCard 
+              iftarTime={todayTimes.aksam}
+              cityName={city.name}
+              locale={params.locale}
+            />
+          )}
 
           {/* Next Prayer Countdown - BIG CARD */}
           {nextPrayer && (

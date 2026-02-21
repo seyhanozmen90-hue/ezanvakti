@@ -140,3 +140,46 @@ export function isValidDate(year: number, month: number, day: number): boolean {
     date.getDate() === day
   );
 }
+
+/** "HH:MM" veya "HH:mm" string'ini dakikaya çevirir */
+export function timeToMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+}
+
+/** Günün uzunluğu: güneş doğuş → akşam (dakika). Dönen: { hours, minutes } */
+export function getDayDuration(sunrise: string, sunset: string): { hours: number; minutes: number } {
+  const start = timeToMinutes(sunrise);
+  const end = timeToMinutes(sunset);
+  let totalMinutes = end - start;
+  if (totalMinutes < 0) totalMinutes += 24 * 60;
+  return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
+}
+
+/** Gecenin uzunluğu: akşam → ertesi imsak (dakika). Dönen: { hours, minutes } */
+export function getNightDuration(sunset: string, nextImsak: string): { hours: number; minutes: number } {
+  const from = timeToMinutes(sunset);
+  const to = timeToMinutes(nextImsak);
+  let totalMinutes = to > from ? (24 * 60 - from) + to : to - from;
+  if (totalMinutes < 0) totalMinutes += 24 * 60;
+  return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
+}
+
+/** Günün kısalması/uzaması: dünün güneş doğuşu ile bugünün farkı (dakika). Pozitif = bugün daha geç doğuyor = gün kısalıyor */
+export function getDayChangeMinutes(todaySunrise: string, yesterdaySunrise: string): number {
+  return timeToMinutes(todaySunrise) - timeToMinutes(yesterdaySunrise);
+}
+
+/** Rumi tarih (basit): Miladi gün/ay gösterimi, Rumi ay adları */
+export function getRumiDate(date: Date): { gun: number; ay: string; yil: number } {
+  const rumiAylar = [
+    'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos',
+    'Eylül', 'Ekim', 'Kasım', 'Aralık', 'Ocak', 'Şubat'
+  ];
+  const m = date.getMonth();
+  const d = date.getDate();
+  const y = date.getFullYear();
+  const rumiMonth = rumiAylar[(m + 10) % 12];
+  const rumiYear = m >= 2 ? y : y - 1;
+  return { gun: d, ay: rumiMonth, yil: rumiYear };
+}

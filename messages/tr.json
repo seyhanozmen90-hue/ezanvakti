@@ -46,6 +46,11 @@
     "aksam": "Akşam",
     "yatsi": "Yatsı"
   },
+  "iftar": {
+    "title": "İftar Vakti — {city}",
+    "subtitle": "Ramazan Ayı Mübarek Olsun",
+    "iftarTime": "İftar Vakti"
+  },
   "prayerNames": {
     "imsak": "İmsak",
     "gunes": "Güneş",

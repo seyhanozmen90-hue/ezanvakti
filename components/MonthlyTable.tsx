@@ -42,28 +42,37 @@ export default function MonthlyTable({ times, locale, cityName }: MonthlyTablePr
 
       {isOpen && (
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
+            <colgroup>
+              <col className="w-[22%] min-w-0" />
+              <col className="w-[13%]" />
+              <col className="w-[13%]" />
+              <col className="w-[13%]" />
+              <col className="w-[13%]" />
+              <col className="w-[13%]" />
+              <col className="w-[13%]" />
+            </colgroup>
             <thead className="bg-navy-100 dark:bg-navy-darkest/70 border-b-2 border-gold-500 dark:border-gold-500/20">
               <tr>
-                <th className="px-3 py-2 text-left text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide min-w-[140px] lg:min-w-[200px]">
+                <th className="px-2 py-2 text-left text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
                   {t('date')}
                 </th>
-                <th className="px-2 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
+                <th className="px-1 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
                   {tPrayers('imsak')}
                 </th>
-                <th className="px-2 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
+                <th className="px-1 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
                   {tPrayers('gunes')}
                 </th>
-                <th className="px-2 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
+                <th className="px-1 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
                   {tPrayers('ogle')}
                 </th>
-                <th className="px-2 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
+                <th className="px-1 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
                   {tPrayers('ikindi')}
                 </th>
-                <th className="px-2 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
+                <th className="px-1 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
                   {tPrayers('aksam')}
                 </th>
-                <th className="px-2 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
+                <th className="px-1 py-2 text-center text-[10px] font-bold text-navy-900 dark:text-gold-400 uppercase tracking-wide">
                   {tPrayers('yatsi')}
                 </th>
               </tr>
@@ -121,8 +130,8 @@ export default function MonthlyTable({ times, locale, cityName }: MonthlyTablePr
                         : 'hover:bg-gray-50 dark:hover:bg-gold-500/5'
                     } transition-colors`}
                   >
-                    <td className="px-3 py-2 text-xs text-navy-900 dark:text-gold-300">
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                    <td className="px-2 py-2 text-xs text-navy-900 dark:text-gold-300 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                         {isToday && <span className="text-xs">👉</span>}
                         <span className="font-semibold whitespace-nowrap text-xs">{time.date}</span>
                         
@@ -171,22 +180,22 @@ export default function MonthlyTable({ times, locale, cityName }: MonthlyTablePr
                         </div>
                       )}
                     </td>
-                    <td className="px-2 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono">
+                    <td className="px-1 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono truncate">
                       {time.imsak}
                     </td>
-                    <td className="px-2 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono">
+                    <td className="px-1 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono truncate">
                       {time.gunes}
                     </td>
-                    <td className="px-2 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono">
+                    <td className="px-1 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono truncate">
                       {time.ogle}
                     </td>
-                    <td className="px-2 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono">
+                    <td className="px-1 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono truncate">
                       {time.ikindi}
                     </td>
-                    <td className="px-2 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono">
+                    <td className="px-1 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono truncate">
                       {time.aksam}
                     </td>
-                    <td className="px-2 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono">
+                    <td className="px-1 py-2 text-xs text-center text-navy-900 dark:text-gold-300 font-mono truncate">
                       {time.yatsi}
                     </td>
                   </tr>

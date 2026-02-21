@@ -40,7 +40,7 @@ export default function MonthPage({ params }: PageProps) {
   const nextYear = month === 12 ? year + 1 : year;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
+    <div className="container mx-auto px-4 py-8 max-w-5xl min-w-0 overflow-x-hidden">
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-6">
