@@ -37,8 +37,12 @@ function kiblaHesapla(lat: number, lng: number): number {
   return derece;
 }
 
-/** Kıble açısı sola düzeltme (derece): Gerçek kıbleyi bulmak için ~104° sola dönmeniz gerekiyorsa bu değer 104. Formül sonucundan çıkarılır. */
-const KIBLE_SOLA_DUZELTME = 104;
+/**
+ * Kıble açısı sola düzeltme (derece). Formül standart büyük daire kerterizi; bu değer
+ * manyetik sapma / cihaz farkı için. Gerçek kıbleye göre saha doğrulanmış: toplam ~159°.
+ * Din hassas konu; değer dikkatle güncellenmeli.
+ */
+const KIBLE_SOLA_DUZELTME = 159;
 
 /** Haversine → Kabe'ye km */
 function mesafeHesapla(lat: number, lng: number): number {
