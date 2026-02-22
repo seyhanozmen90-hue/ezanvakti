@@ -37,8 +37,8 @@ function kiblaHesapla(lat: number, lng: number): number {
   return derece;
 }
 
-/** Cihaz pusula sapması (derece): Gerçek kıbleye dönükken cihaz Y gösteriyorsa, (Y − hesaplanan kıble) buraya yazın. Örn. 343−144=199. 0 = düzeltme yok. */
-const PUSULA_CIHAZ_DUZELTME = 199;
+/** Kıble açısı sola düzeltme (derece): Gerçek kıbleyi bulmak için ~104° sola dönmeniz gerekiyorsa bu değer 104. Formül sonucundan çıkarılır. */
+const KIBLE_SOLA_DUZELTME = 104;
 
 /** Haversine → Kabe'ye km */
 function mesafeHesapla(lat: number, lng: number): number {
@@ -120,7 +120,7 @@ export default function KiblePusulasi() {
       kuzeyHam = (360 - e.alpha) % 360;
     }
 
-    const kuzeyDuzeltilmis = (kuzeyHam - PUSULA_CIHAZ_DUZELTME + 360) % 360;
+    const kuzeyDuzeltilmis = kuzeyHam;
     const prev = smoothedKuzeyRef.current;
     let kuzey: number;
     if (prev !== null) {
@@ -201,7 +201,8 @@ export default function KiblePusulasi() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
-        const kibla = kiblaHesapla(lat, lng);
+        const kiblaHam = kiblaHesapla(lat, lng);
+        const kibla = (kiblaHam - KIBLE_SOLA_DUZELTME + 360) % 360;
         setKonum({ lat, lng });
         setKiblaAcisi(kibla);
         setMesafe(mesafeHesapla(lat, lng));
