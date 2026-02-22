@@ -28,13 +28,30 @@ export function getPrayerDisplayName(name: PrayerName): string {
   return names[name];
 }
 
+/** Namaz vakitleri Türkiye saatine göre; şu anki saati Europe/Istanbul'a göre al */
+function getNowInTurkey(): { hours: number; minutes: number; minutesOfDay: number } {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('tr-TR', {
+    timeZone: 'Europe/Istanbul',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(now);
+  const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? '0', 10);
+  const hours = get('hour');
+  const minutes = get('minute');
+  return { hours, minutes, minutesOfDay: hours * 60 + minutes };
+}
+
 /**
- * Bir sonraki namaz vaktini bulur
+ * Bir sonraki namaz vaktini bulur (Türkiye saatine göre – sunucu timezone'dan bağımsız)
  */
 export function getNextPrayerTime(times: PrayerTime): NextPrayer | null {
   if (!times) return null;
 
-  const now = new Date();
+  const { minutesOfDay: nowMinutes } = getNowInTurkey();
 
   const prayers: Array<{ name: PrayerName; time: string }> = [
     { name: 'imsak', time: times.imsak },
@@ -45,14 +62,10 @@ export function getNextPrayerTime(times: PrayerTime): NextPrayer | null {
     { name: 'yatsi', time: times.yatsi },
   ];
 
-  // Bugünkü tarihle tüm vakitleri Date objesine çevir
   for (const prayer of prayers) {
-    const [hours, minutes] = prayer.time.split(':').map(Number);
-    const prayerDate = new Date();
-    prayerDate.setHours(hours, minutes, 0, 0);
-
-    // Eğer vakit henüz gelmemişse, bu bir sonraki vakit
-    if (prayerDate > now) {
+    const [h, m] = prayer.time.split(':').map(Number);
+    const prayerMinutes = h * 60 + m;
+    if (prayerMinutes > nowMinutes) {
       return {
         name: prayer.name,
         time: prayer.time,
@@ -61,7 +74,7 @@ export function getNextPrayerTime(times: PrayerTime): NextPrayer | null {
     }
   }
 
-  // Eğer tüm vakitler geçtiyse, yarının ilk vakti (İmsak)
+  // Tüm vakitler geçtiyse bir sonraki vakit yarının İmsak'ı
   return {
     name: 'imsak',
     time: times.imsak,

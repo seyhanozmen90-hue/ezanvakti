@@ -104,16 +104,30 @@ export default function KiblePusulasi() {
   const kadranRef = useRef<IbreRefObj>({ current: 0, rafId: null });
   const kiblaRef = useRef<number | null>(null);
   const temizleyici = useRef<(() => void) | null>(null);
-
+  /** Kıble açısı sadece konum alındığında set edilir; sensör handler sadece okur, asla değiştirmez */
   kiblaRef.current = kiblaAcisi;
 
+  /** Low-pass: 0/360 sınırında sıçramayı önlemek için en kısa farkla birleştir */
+  const smoothedKuzeyRef = useRef<number | null>(null);
+  const SMOOTH_K = 0.2; // 0 = sadece yeni değer, 1 = sadece eski
+
   const sensorHandler = useCallback((e: DeviceOrientationEventWithCompass) => {
-    let kuzey = 0;
+    let kuzeyHam = 0;
 
     if (typeof e.webkitCompassHeading === 'number' && e.webkitCompassHeading >= 0) {
-      kuzey = e.webkitCompassHeading;
+      kuzeyHam = e.webkitCompassHeading;
     } else if (e.alpha !== null && e.alpha !== undefined) {
-      kuzey = (360 - e.alpha) % 360;
+      kuzeyHam = (360 - e.alpha) % 360;
+    }
+
+    let kuzey = kuzeyHam;
+    const prev = smoothedKuzeyRef.current;
+    if (prev !== null) {
+      const delta = ((kuzeyHam - prev + 540) % 360) - 180;
+      kuzey = (prev + delta * (1 - SMOOTH_K) + 360) % 360;
+      smoothedKuzeyRef.current = kuzey;
+    } else {
+      smoothedKuzeyRef.current = kuzey;
     }
 
     setCihazYonu(Math.round(kuzey));
@@ -122,7 +136,10 @@ export default function KiblePusulasi() {
     if (kibla === null) return;
 
     // Gerçek pusula: kadran döner, N her zaman manyetik kuzeyi gösterir
-    const hedefKadran = (360 - kuzey) % 360;
+    const hedefKadranHam = (360 - kuzey) % 360;
+    const curKadran = kadranRef.current.current;
+    const shortestDelta = ((hedefKadranHam - curKadran + 540) % 360) - 180;
+    const hedefKadran = (curKadran + shortestDelta + 360) % 360;
     smoothAngle(kadranRef.current, hedefKadran, (v) => setKadranAcisi(v));
 
     const fark = aciFarki(kibla, kuzey);
@@ -444,6 +461,7 @@ export default function KiblePusulasi() {
               setCihazYonu(0);
               setKadranAcisi(0);
               kadranRef.current = { current: 0, rafId: null };
+              smoothedKuzeyRef.current = null;
             }}
             className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 text-sm py-3 rounded-2xl transition-all"
           >
