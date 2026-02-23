@@ -62,6 +62,7 @@ const CITY_NAME_MAP: Record<string, string> = {
   'rize': 'Rize',
   'giresun': 'Giresun',
   'zonguldak': 'Zonguldak',
+  'karaman': 'Karaman',
   'kastamonu': 'Kastamonu',
   'sinop': 'Sinop',
   'amasya': 'Amasya',

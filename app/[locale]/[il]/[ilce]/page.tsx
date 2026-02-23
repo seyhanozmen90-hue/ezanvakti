@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: DistrictPageProps): Promise<M
   
   if (!result) {
     // Tanımsız ilçe için SEO metadata
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ezanvakti.com';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
     return {
       title: 'Bu İlçe Yakında Eklenecek | Ezan Vakitleri',
       description: 'Namaz vakitleri ve takvim bilgileri bu ilçe için henüz yayında değil. Veriler kademeli olarak eklenmektedir.',
@@ -271,13 +271,13 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
   const isRamadanMonth = isRamadan(todayTimes.hijriDate);
 
   // JSON-LD Structured Data (Google için)
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ezanvakti.com';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
     name: `${city.name} ${district.name} Ezan Vakitleri`,
     description: `${city.name} ${district.name} için güncel namaz vakitleri ve ezan saatleri`,
-    url: `${baseUrl}/${city.slug}/${district.slug}`,
+    url: `${baseUrl}/tr/${city.slug}/${district.slug}`,
     mainEntity: {
       '@type': 'Schedule',
       name: `${city.name} ${district.name} Namaz Vakitleri`,
@@ -325,19 +325,19 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
           '@type': 'ListItem',
           position: 1,
           name: 'Ana Sayfa',
-          item: baseUrl,
+          item: `${baseUrl}/tr`,
         },
         {
           '@type': 'ListItem',
           position: 2,
           name: city.name,
-          item: `${baseUrl}/${city.slug}`,
+          item: `${baseUrl}/tr/${city.slug}`,
         },
         {
           '@type': 'ListItem',
           position: 3,
           name: district.name,
-          item: `${baseUrl}/${city.slug}/${district.slug}`,
+          item: `${baseUrl}/tr/${city.slug}/${district.slug}`,
         },
       ],
     },

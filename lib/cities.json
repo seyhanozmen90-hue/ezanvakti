@@ -191,10 +191,12 @@
     },
     {
       "id": "9202",
-      "name": "Adapazarı",
-      "slug": "adapazari",
+      "name": "Sakarya",
+      "slug": "sakarya",
       "districts": [
-        {"id": "9202", "name": "Merkez", "slug": "merkez"}
+        {"id": "9202", "name": "Merkez", "slug": "merkez"},
+        {"id": "9203", "name": "Adapazarı", "slug": "adapazari"},
+        {"id": "9204", "name": "Serdivan", "slug": "serdivan"}
       ]
     },
     {
@@ -308,6 +310,27 @@
       "districts": [
         {"id": "9286", "name": "Merkez", "slug": "merkez"}
       ]
-    }
+    },
+    {"id": "9401", "name": "Çanakkale", "slug": "canakkale", "districts": [{"id": "9401", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9402", "name": "Edirne", "slug": "edirne", "districts": [{"id": "9402", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9403", "name": "Muğla", "slug": "mugla", "districts": [{"id": "9403", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9404", "name": "Adıyaman", "slug": "adiyaman", "districts": [{"id": "9404", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9405", "name": "Afyonkarahisar", "slug": "afyonkarahisar", "districts": [{"id": "9405", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9406", "name": "Ağrı", "slug": "agri", "districts": [{"id": "9406", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9407", "name": "Aksaray", "slug": "aksaray", "districts": [{"id": "9407", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9408", "name": "Batman", "slug": "batman", "districts": [{"id": "9408", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9409", "name": "Bolu", "slug": "bolu", "districts": [{"id": "9409", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9410", "name": "Burdur", "slug": "burdur", "districts": [{"id": "9410", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9411", "name": "Giresun", "slug": "giresun", "districts": [{"id": "9411", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9412", "name": "Isparta", "slug": "isparta", "districts": [{"id": "9412", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9413", "name": "Karabük", "slug": "karabuk", "districts": [{"id": "9413", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9414", "name": "Karaman", "slug": "karaman", "districts": [{"id": "9414", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9415", "name": "Kastamonu", "slug": "kastamonu", "districts": [{"id": "9415", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9416", "name": "Kırıkkale", "slug": "kirikkale", "districts": [{"id": "9416", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9417", "name": "Mardin", "slug": "mardin", "districts": [{"id": "9417", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9418", "name": "Nevşehir", "slug": "nevsehir", "districts": [{"id": "9418", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9419", "name": "Ordu", "slug": "ordu", "districts": [{"id": "9419", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9420", "name": "Rize", "slug": "rize", "districts": [{"id": "9420", "name": "Merkez", "slug": "merkez"}]},
+    {"id": "9421", "name": "Zonguldak", "slug": "zonguldak", "districts": [{"id": "9421", "name": "Merkez", "slug": "merkez"}]}
   ]
 }

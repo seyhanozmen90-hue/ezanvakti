@@ -7,9 +7,49 @@ import { notFound } from 'next/navigation';
 import { locales } from '@/i18n';
 import NavigationTabs from '@/components/NavigationTabs';
 import InstallPWA from '@/components/InstallPWA';
+import JsonLd from '@/components/JsonLd';
 import '../globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
+
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': `${baseUrl}/#website`,
+      url: baseUrl,
+      name: 'EzanVakti.site',
+      description: "Türkiye geneli ezan ve namaz vakitleri",
+      inLanguage: 'tr-TR',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: `${baseUrl}/namaz-vakitleri/{search_term_string}`,
+        'query-input': 'required name=search_term_string',
+      },
+    },
+    {
+      '@type': 'WebApplication',
+      '@id': `${baseUrl}/#webapp`,
+      name: 'EzanVakti - Namaz Vakitleri',
+      url: baseUrl,
+      applicationCategory: 'LifestyleApplication',
+      operatingSystem: 'Web, iOS, Android',
+      inLanguage: 'tr-TR',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'TRY',
+      },
+    },
+  ],
+};
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+});
 
 // Metadata'yı dinamik olarak oluştur
 export async function generateMetadata({
@@ -23,13 +63,22 @@ export async function generateMetadata({
   return {
     metadataBase: new URL(baseUrl),
     title: {
-      default: `${t('title')} | ${t('subtitle')}`,
-      template: `%s | ${t('title')}`,
+      default: 'Ezan Vakitleri 2026 | Günlük Namaz Saatleri',
+      template: '%s | EzanVakti.site',
     },
-    description: t('description'),
-    keywords: 'ezan vakitleri, namaz vakitleri, ezan saati, İstanbul ezan vakitleri, Ankara ezan vakitleri, diyanet namaz vakitleri, 2026 namaz vakitleri',
-    authors: [{ name: t('title') }],
-    creator: t('title'),
+    description:
+      "Türkiye'nin tüm illerinde günlük ezan ve namaz vakitleri. İmsakiye, kıble yönü ve daha fazlası.",
+    keywords: [
+      'ezan vakitleri',
+      'namaz vakitleri',
+      'imsak',
+      'iftar',
+      'sahur',
+      'kıble',
+      '2026 imsakiye',
+    ],
+    authors: [{ name: 'EzanVakti' }],
+    creator: 'EzanVakti',
     publisher: t('title'),
     robots: {
       index: true,
@@ -37,9 +86,7 @@ export async function generateMetadata({
       googleBot: {
         index: true,
         follow: true,
-        'max-video-preview': -1,
         'max-image-preview': 'large',
-        'max-snippet': -1,
       },
     },
     alternates: {
@@ -49,14 +96,24 @@ export async function generateMetadata({
       type: 'website',
       locale: locale === 'tr' ? 'tr_TR' : locale,
       url: baseUrl,
-      siteName: t('title'),
-      title: `${t('title')} | ${t('subtitle')}`,
-      description: t('description'),
+      siteName: 'EzanVakti.site',
+      title: 'Ezan Vakitleri 2026 | Günlük Namaz Saatleri',
+      description:
+        "Türkiye'nin tüm şehirlerinde günlük ezan vakitleri, imsakiye ve kıble pusulası.",
+      images: [
+        {
+          url: '/og-image.png',
+          width: 1200,
+          height: 630,
+          alt: 'EzanVakti.site - Namaz Vakitleri',
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${t('title')} | ${t('subtitle')}`,
-      description: t('description'),
+      title: 'Ezan Vakitleri 2026',
+      description: 'Günlük namaz vakitleri ve imsakiye',
+      images: ['/og-image.png'],
     },
     manifest: '/manifest.json',
     appleWebApp: {
@@ -106,6 +163,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className={`${inter.className} overflow-x-hidden`}>
+        <JsonLd data={websiteSchema} />
         <NextIntlClientProvider messages={messages}>
           <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 overflow-x-hidden">
             <NavigationTabs />

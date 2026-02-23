@@ -1,37 +1,59 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { calculateTimeRemaining, TimeRemaining } from '@/lib/utils';
+import { iftarBildirimi } from '@/lib/iftar-bildirim';
 
 interface CountdownTimerProps {
   targetTime: string;
   prayerName: string;
   locale: string;
+  /** Akşam vakti geri sayımı bittiğinde Ramazan iftar bildirimi için */
+  cityName?: string;
+  aksamTime?: string;
+  prayerKey?: string;
 }
 
-export default function CountdownTimer({ targetTime, prayerName, locale }: CountdownTimerProps) {
+export default function CountdownTimer({
+  targetTime,
+  prayerName,
+  locale,
+  cityName,
+  aksamTime,
+  prayerKey,
+}: CountdownTimerProps) {
   const t = useTranslations('time');
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining | null>(null);
+  const iftarFiredRef = useRef(false);
 
   useEffect(() => {
-    // İlk hesaplama
     setTimeRemaining(calculateTimeRemaining(targetTime));
-
-    // Her saniye güncelle
     const interval = setInterval(() => {
       setTimeRemaining(calculateTimeRemaining(targetTime));
     }, 1000);
-
     return () => clearInterval(interval);
   }, [targetTime]);
+
+  // Ramazan: akşam vakti sıfıra ulaştığında bir kez iftar bildirimi
+  useEffect(() => {
+    if (
+      timeRemaining?.totalSeconds === 0 &&
+      prayerKey === 'aksam' &&
+      cityName &&
+      aksamTime &&
+      !iftarFiredRef.current
+    ) {
+      iftarFiredRef.current = true;
+      iftarBildirimi(cityName, aksamTime);
+    }
+  }, [timeRemaining?.totalSeconds, prayerKey, cityName, aksamTime]);
 
   if (!timeRemaining) {
     return <div className="text-2xl font-bold">{t('loading', { ns: 'loading' })}</div>;
   }
 
   if (timeRemaining.totalSeconds <= 0) {
-    // Vakit geldi - sayfa otomatik yenilenecek
     return (
       <div className="text-2xl font-bold text-navy-900 dark:text-green-400 animate-pulse">
         🕌 {t('timeEntered')}

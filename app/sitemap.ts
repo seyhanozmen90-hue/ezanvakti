@@ -1,70 +1,62 @@
 import { MetadataRoute } from 'next';
-import { getAllCityDistrictCombinations } from '@/lib/cities-helper';
 
-/**
- * Sitemap for ezanvakti.site
- * Accessible at: https://www.ezanvakti.site/sitemap.xml
- */
+const ILLER = [
+  'adana', 'adiyaman', 'afyonkarahisar', 'agri', 'aksaray', 'amasya', 'ankara',
+  'antalya', 'ardahan', 'artvin', 'aydin', 'balikesir', 'bartin', 'batman',
+  'bayburt', 'bilecik', 'bingol', 'bitlis', 'bolu', 'burdur', 'bursa', 'canakkale',
+  'cankiri', 'corum', 'denizli', 'diyarbakir', 'duzce', 'edirne', 'elazig',
+  'erzincan', 'erzurum', 'eskisehir', 'gaziantep', 'giresun', 'gumushane',
+  'hakkari', 'hatay', 'igdir', 'isparta', 'istanbul', 'izmir', 'kahramanmaras',
+  'karabuk', 'karaman', 'kars', 'kastamonu', 'kayseri', 'kilis', 'kirikkale',
+  'kirklareli', 'kirsehir', 'kocaeli', 'konya', 'kutahya', 'malatya', 'manisa',
+  'mardin', 'mersin', 'mugla', 'mus', 'nevsehir', 'nigde', 'ordu', 'osmaniye',
+  'rize', 'sakarya', 'samsun', 'sanliurfa', 'siirt', 'sinop', 'sirnak', 'sivas',
+  'tekirdag', 'tokat', 'trabzon', 'tunceli', 'usak', 'van', 'yalova', 'yozgat', 'zonguldak',
+];
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
-  const combinations = getAllCityDistrictCombinations();
   const now = new Date();
 
-  const routes: MetadataRoute.Sitemap = [
-    // Homepage
+  const staticPages: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
+      changeFrequency: 'daily',
+      priority: 1,
       lastModified: now,
-      changeFrequency: 'hourly',
-      priority: 1.0,
-    },
-    // Static pages
-    {
-      url: `${baseUrl}/tr/hakkimizda`,
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/tr/iletisim`,
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/tr/gizlilik-politikasi`,
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.5,
     },
     {
       url: `${baseUrl}/tr/kible`,
+      changeFrequency: 'monthly',
+      priority: 0.8,
       lastModified: now,
-      changeFrequency: 'yearly',
-      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/tr/hakkimizda`,
+      changeFrequency: 'monthly',
+      priority: 0.5,
+      lastModified: now,
+    },
+    {
+      url: `${baseUrl}/tr/iletisim`,
+      changeFrequency: 'monthly',
+      priority: 0.5,
+      lastModified: now,
+    },
+    {
+      url: `${baseUrl}/tr/gizlilik-politikasi`,
+      changeFrequency: 'monthly',
+      priority: 0.5,
+      lastModified: now,
     },
   ];
 
-  // City and district pages
-  combinations.forEach(({ city, district }) => {
-    if (!district) {
-      // City main page
-      routes.push({
-        url: `${baseUrl}/tr/${city.slug}`,
-        lastModified: now,
-        changeFrequency: 'daily',
-        priority: 0.9,
-      });
-    } else {
-      // District page
-      routes.push({
-        url: `${baseUrl}/tr/${city.slug}/${district.slug}`,
-        lastModified: now,
-        changeFrequency: 'daily',
-        priority: 0.8,
-      });
-    }
-  });
+  const cityPages: MetadataRoute.Sitemap = ILLER.map((il) => ({
+    url: `${baseUrl}/tr/${il}`,
+    changeFrequency: 'daily' as const,
+    priority: 0.9,
+    lastModified: now,
+  }));
 
-  return routes;
+  return [...staticPages, ...cityPages];
 }

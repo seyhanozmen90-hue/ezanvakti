@@ -6,6 +6,7 @@ import { getCityBySlug, getAllCities } from '@/lib/cities-helper';
 import { getNextPrayerTime, formatDate, formatHijriDate, isRamadan } from '@/lib/utils';
 import { getPrayerTimes } from '@/lib/services/prayerTimesService';
 import { hasCoordsExist } from '@/lib/geo/tr';
+import { SEHIR_ADLARI } from '@/lib/sehir-adlari';
 import CountdownTimer from '@/components/CountdownTimer';
 import PrayerTimeCard from '@/components/PrayerTimeCard';
 import MonthlyTable from '@/components/MonthlyTable';
@@ -36,103 +37,55 @@ interface CityPageProps {
 
 export async function generateMetadata({ params }: CityPageProps): Promise<Metadata> {
   const city = getCityBySlug(params.il);
-  
+  const sehirAdi = SEHIR_ADLARI[params.il] ?? city?.name ?? params.il;
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
+  const url = `${baseUrl}/tr/${params.il}`;
+  const yil = new Date().getFullYear();
+  const bugun = new Date().toLocaleDateString('tr-TR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
   if (!city) {
-    // Tanımsız şehir için SEO metadata
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ezanvakti.com';
     return {
-      title: 'Bu Şehir Yakında Eklenecek | Ezan Vakitleri',
-      description: 'Namaz vakitleri ve takvim bilgileri bu şehir için henüz yayında değil. Veriler kademeli olarak eklenmektedir.',
-      robots: {
-        index: false,
-        follow: false,
-        googleBot: {
-          index: false,
-          follow: false,
-        },
-      },
-      alternates: {
-        canonical: baseUrl,
-      },
+      title: `${sehirAdi} Namaz Vakitleri ${yil} | Ezan Vakitleri`,
+      description: 'Namaz vakitleri ve takvim bilgisi bu şehir için yakında eklenecek.',
+      robots: { index: false, follow: false },
+      alternates: { canonical: baseUrl },
     };
   }
 
-  const tSeo = await getTranslations({ locale: params.locale, namespace: 'seo' });
-  const todayTimes = await getTodayPrayerTimes(city.id);
-  
-  const title = tSeo('cityTitle', { city: city.name });
-  const description = todayTimes
-    ? tSeo('cityDescription', {
-        city: city.name,
-        imsak: todayTimes.imsak,
-        ogle: todayTimes.ogle,
-        ikindi: todayTimes.ikindi,
-        aksam: todayTimes.aksam,
-        yatsi: todayTimes.yatsi,
-      })
-    : tSeo('defaultDescription', { location: city.name });
-
-  const keywords = [
-    `${city.name} ezan vakitleri`,
-    `${city.name} namaz vakitleri`,
-    `${city.name} namaz saatleri`,
-    `${city.name} imsak vakti`,
-    `${city.name} akşam ezanı`,
-    'ezan vakitleri 2026',
-    'namaz vakitleri türkiye',
-    'diyanet namaz vakitleri',
-    'günlük namaz vakitleri',
-    'aylık vakit cetveli',
-  ];
-
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
-  const url = `${baseUrl}/tr/${city.slug}`;
-  const currentYear = new Date().getFullYear();
-
   return {
-    title: `${city.name} Namaz Vakitleri ${currentYear} | Diyanet Onaylı Ezan Saatleri`,
-    description: `${city.name} namaz vakitleri ${currentYear}. Güncel imsak, güneş, öğle, ikindi, akşam, yatsı saatleri. Diyanet İşleri Başkanlığı onaylı ${city.name} ezan vakitleri ve aylık takvim.`,
-    keywords: keywords.join(', '),
-    authors: [{ name: 'Ezan Vakitleri' }],
-    creator: 'Ezan Vakitleri',
-    publisher: 'Ezan Vakitleri',
-    alternates: {
-      canonical: url,
-    },
+    title: `${sehirAdi} Namaz Vakitleri ${yil} | Günlük Ezan Saatleri`,
+    description: `${sehirAdi} namaz vakitleri ${bugun}. Diyanet onaylı güncel imsak, güneş, öğle, ikindi, akşam, yatsı saatleri. ${sehirAdi} ${yil} imsakiye ve iftar vakitleri.`,
+    keywords: [
+      `${sehirAdi} namaz vakitleri`,
+      `${sehirAdi} ezan vakitleri`,
+      `${sehirAdi} imsak vakti`,
+      `${sehirAdi} iftar vakti`,
+      `${sehirAdi} imsakiye ${yil}`,
+      `${sehirAdi} namaz saatleri`,
+      `${sehirAdi} akşam ezanı`,
+      `${sehirAdi} sahur vakti`,
+    ],
+    authors: [{ name: 'EzanVakti' }],
+    creator: 'EzanVakti',
+    alternates: { canonical: url },
     openGraph: {
       type: 'website',
       locale: params.locale === 'tr' ? 'tr_TR' : params.locale,
       url,
-      title: `${city.name} Namaz Vakitleri ${currentYear}`,
-      description: `${city.name} için güncel namaz vakitleri. İmsak, öğle, ikindi, akşam, yatsı saatleri ve aylık takvim.`,
+      title: `${sehirAdi} Namaz Vakitleri ${yil}`,
+      description: `${sehirAdi} için güncel ezan ve namaz vakitleri. İmsakiye, iftar saati.`,
       siteName: 'EzanVakti.site',
-      images: [
-        {
-          url: `${baseUrl}/icon-512x512.png`,
-          width: 512,
-          height: 512,
-          alt: `${city.name} Ezan Vakitleri`,
-        },
-      ],
     },
     twitter: {
       card: 'summary',
-      title: `${city.name} Namaz Vakitleri ${currentYear}`,
-      description: `${city.name} için güncel namaz vakitleri`,
-      images: [`${baseUrl}/icon-512x512.png`],
+      title: `${sehirAdi} Namaz Vakitleri ${yil}`,
+      description: `${sehirAdi} için güncel ezan ve namaz vakitleri. İmsakiye, iftar saati.`,
     },
-    // Şehir sayfaları HER ZAMAN INDEX edilir
-    robots: {
-      index: true, // Her zaman index
-      follow: true,
-      googleBot: {
-        index: true,
-        follow: true,
-        'max-video-preview': -1,
-        'max-image-preview': 'large',
-        'max-snippet': -1,
-      },
-    },
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large' } },
   };
 }
 
@@ -358,9 +311,45 @@ export default async function CityPage({ params }: CityPageProps) {
     },
   };
 
+  // FAQ JSON-LD (şehir sayfası SEO)
+  const yil = new Date().getFullYear();
+  const faqSchema =
+    todayTimes &&
+    ({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: `${city.name} bugün imsak vakti saat kaçta?`,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: `${city.name} için bugün imsak vakti ${todayTimes.imsak} olarak belirlenmiştir.`,
+          },
+        },
+        {
+          '@type': 'Question',
+          name: `${city.name} iftar vakti saat kaçta?`,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: `${city.name} için bugün iftar vakti (akşam ezanı) ${todayTimes.aksam} olarak belirlenmiştir.`,
+          },
+        },
+        {
+          '@type': 'Question',
+          name: `${city.name} ${yil} imsakiye nedir?`,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: `${city.name} ${yil} Ramazan imsakiyesi için ezanvakti.site'yi ziyaret edin.`,
+          },
+        },
+      ],
+    } as const);
+
   return (
     <>
       <JsonLd data={jsonLd} />
+      {faqSchema && <JsonLd data={faqSchema} />}
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-navy-darkest dark:via-navy-darker dark:to-navy-dark">
         <div className="container mx-auto px-4 sm:px-6 py-6 max-w-6xl">
           {/* SEO H1 + Location & Date */}
@@ -441,10 +430,13 @@ export default async function CityPage({ params }: CityPageProps) {
                   {nextPrayer.time}
                 </div>
               </div>
-              <CountdownTimer 
-                targetTime={nextPrayer.time} 
+              <CountdownTimer
+                targetTime={nextPrayer.time}
                 prayerName={nextPrayer.displayName}
                 locale={params.locale}
+                cityName={city.name}
+                aksamTime={todayTimes.aksam}
+                prayerKey={nextPrayer.name}
               />
             </div>
           )}
