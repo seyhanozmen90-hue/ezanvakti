@@ -3,7 +3,8 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
-import { useRouter } from '@/lib/navigation';
+import { useRouter } from 'next/navigation';
+import { useRouter as useLocaleRouter } from '@/lib/navigation';
 import { City, District } from '@/lib/types';
 import { getAllCities } from '@/lib/cities-helper';
 
@@ -23,7 +24,9 @@ function matchesSearch(text: string, query: string): boolean {
 
 export default function CitySelector({ currentCity, currentDistrict, locale }: CitySelectorProps) {
   const t = useTranslations('location');
-  const router = useRouter();
+  const nextRouter = useRouter();
+  const router = useLocaleRouter();
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const cities = getAllCities();
   const sortedCities = [...cities].sort((a, b) => a.name.localeCompare(b.name, 'tr-TR'));
@@ -123,25 +126,26 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
   }, []);
 
   const handleCitySelect = (city: City) => {
-    setSelectedCitySlug(city.slug);
-    setCityQuery('');
     setCityOpen(false);
-    setSelectedDistrictSlug('');
-    setAvailableDistricts(city.districts || []);
-    setDistrictQuery('');
-    setDistrictOpen(false);
+    setCityQuery('');
+    setIsNavigating(true);
     if (typeof window !== 'undefined') {
       localStorage.setItem('selectedCity', city.name);
       localStorage.setItem('selectedCitySlug', city.slug);
       localStorage.removeItem('selectedDistrict');
     }
+    setSelectedCitySlug(city.slug);
+    setSelectedDistrictSlug('');
+    setAvailableDistricts(city.districts || []);
+    setDistrictQuery('');
+    setDistrictOpen(false);
     router.push(`/${city.slug}`);
   };
 
   const handleDistrictSelect = (district: District) => {
-    setSelectedDistrictSlug(district.slug);
-    setDistrictQuery('');
     setDistrictOpen(false);
+    setDistrictQuery('');
+    setIsNavigating(true);
     if (selectedCitySlug && typeof window !== 'undefined') {
       const city = cities.find((c) => c.slug === selectedCitySlug);
       if (city) {
@@ -150,8 +154,40 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
         localStorage.setItem('selectedDistrict', district.name);
       }
     }
+    setSelectedDistrictSlug(district.slug);
     router.push(`/${selectedCitySlug}/${district.slug}`);
   };
+
+  const prefetchCity = (citySlug: string) => {
+    try {
+      nextRouter.prefetch(`/${citySlug}`);
+    } catch (_) {}
+  };
+  const prefetchDistrict = (districtSlug: string) => {
+    if (selectedCitySlug) {
+      try {
+        nextRouter.prefetch(`/${selectedCitySlug}/${districtSlug}`);
+      } catch (_) {}
+    }
+  };
+
+  // Dropdown açıldığında ilk birkaç seçeneği prefetch et (tıklamadan önce veri yüklensin)
+  useEffect(() => {
+    if (!cityOpen || filteredCities.length === 0) return;
+    filteredCities.slice(0, 10).forEach((c) => {
+      try {
+        nextRouter.prefetch(`/${c.slug}`);
+      } catch (_) {}
+    });
+  }, [cityOpen]);
+  useEffect(() => {
+    if (!districtOpen || !selectedCitySlug || filteredDistricts.length === 0) return;
+    filteredDistricts.slice(0, 10).forEach((d) => {
+      try {
+        nextRouter.prefetch(`/${selectedCitySlug}/${d.slug}`);
+      } catch (_) {}
+    });
+  }, [districtOpen, selectedCitySlug]);
 
   const inputBase = 'w-full px-3 py-2 pr-9 bg-navy-darkest/70 backdrop-blur-sm rounded-lg shadow-md border border-gold-500/30 hover:border-gold-500/50 text-gold-300 dark:text-gold-300 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-gold-500';
   const dropdownListBase = 'max-h-56 overflow-y-auto rounded-lg border border-gold-500/30 bg-navy-darkest shadow-xl z-[9999]';
@@ -178,6 +214,7 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
                 <li
                   key={city.slug}
                   role="option"
+                  onMouseEnter={() => prefetchCity(city.slug)}
                   onClick={() => handleCitySelect(city)}
                   className="px-3 py-2 text-sm font-medium text-gold-300 hover:bg-gold-500/20 cursor-pointer"
                 >
@@ -212,6 +249,7 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
                 <li
                   key={district.slug}
                   role="option"
+                  onMouseEnter={() => prefetchDistrict(district.slug)}
                   onClick={() => handleDistrictSelect(district)}
                   className="px-3 py-2 text-sm font-medium text-gold-300 hover:bg-gold-500/20 cursor-pointer"
                 >
@@ -228,6 +266,11 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
       {/* İl: yazarak ara + dropdown (portal ile body'de render) */}
       <div ref={cityRef} className="relative w-full sm:w-auto sm:min-w-[200px]">
+        {isNavigating && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-navy-darkest/90" aria-hidden>
+            <span className="inline-block h-4 w-4 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
         <input
           ref={cityInputRef}
           type="text"
@@ -242,6 +285,7 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
           autoComplete="off"
           aria-expanded={cityOpen}
           aria-autocomplete="list"
+          disabled={isNavigating}
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
           <svg className="w-4 h-4 text-gold-300 dark:text-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -253,6 +297,11 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
 
       {/* İlçe: yazarak ara + dropdown (portal ile body'de render) */}
       <div ref={districtRef} className="relative w-full sm:w-auto sm:min-w-[200px]">
+        {isNavigating && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-navy-darkest/90" aria-hidden>
+            <span className="inline-block h-4 w-4 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
         <input
           ref={districtInputRef}
           type="text"
@@ -263,7 +312,7 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
           }}
           onFocus={() => setDistrictOpen(true)}
           placeholder={t('searchDistrict')}
-          disabled={!selectedCitySlug || availableDistricts.length === 0}
+          disabled={!selectedCitySlug || availableDistricts.length === 0 || isNavigating}
           className={inputBase + ' disabled:opacity-40 disabled:cursor-not-allowed'}
           autoComplete="off"
           aria-expanded={districtOpen}
