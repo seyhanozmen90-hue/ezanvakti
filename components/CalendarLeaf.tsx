@@ -110,13 +110,13 @@ export default function CalendarLeaf({
           </div>
         </div>
 
-        {/* Ana içerik: Sol saat, sağda şehir adı + namaz vakitleri tablosu */}
-        <div className="py-3 px-3 sm:px-4">
-          <div className="flex flex-wrap items-start justify-between gap-4 sm:gap-6">
-            {/* Sol: Sadece analog saat (şehir adı burada değil) */}
-            <div className="flex flex-col items-center flex-shrink-0 order-1">
+        {/* Üst satır: Saat | ŞUBAT 23 | Namaz vakitleri — desktop’ta tek row, mobilde stack */}
+        <div className="py-3 px-3 sm:px-4 min-h-[200px] md:min-h-[220px]">
+          <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4 md:gap-6 w-full max-w-full">
+            {/* 1) Sol: Analog saat */}
+            <div className="flex justify-center md:justify-start order-1">
               <div
-                className="rounded-full border-[3px] border-black dark:border-white bg-white dark:bg-gray-900 relative flex-shrink-0"
+                className="rounded-full border-[3px] border-black dark:border-white bg-white dark:bg-gray-900 flex-shrink-0"
                 style={{ width: 'clamp(80px, 28vw, 140px)', height: 'clamp(80px, 28vw, 140px)' }}
               >
                 <svg className="w-full h-full" viewBox="0 0 100 100">
@@ -132,12 +132,28 @@ export default function CalendarLeaf({
               </div>
             </div>
 
-            {/* Sağ: İl adı (üstte) + Namaz vakitleri tablosu */}
-            <div className="flex flex-col items-end flex-shrink-0 order-2 min-w-0 ml-auto sm:ml-0">
-              <div className="text-[11px] sm:text-[13px] font-black text-black dark:text-white mb-1.5 text-right w-full sm:min-w-[160px]">
+            {/* 2) Orta: Ay + Gün (ŞUBAT / 23) — saatin yanında, dikey ortada */}
+            <div className="flex flex-col items-center justify-center text-center order-2 min-h-[100px] md:min-h-0">
+              <h2
+                className="font-black tracking-[0.1em] sm:tracking-[0.2em] leading-none text-black dark:text-white"
+                style={{ fontSize: 'clamp(1.25rem, 8vw, 3rem)' }}
+              >
+                {monthName}
+              </h2>
+              <div
+                className="font-black leading-none text-black dark:text-white"
+                style={{ fontSize: 'clamp(3rem, 22vw, 7rem)', letterSpacing: '-0.05em' }}
+              >
+                {day}
+              </div>
+            </div>
+
+            {/* 3) Sağ: İl adı + Namaz vakitleri tablosu */}
+            <div className="flex flex-col items-center md:items-end order-3 min-w-0">
+              <div className="text-[11px] sm:text-[13px] font-black text-black dark:text-white mb-1.5 w-full md:text-right md:min-w-[160px]">
                 {displayCityLabel}
               </div>
-              <div className="border-[3px] border-black dark:border-white bg-white dark:bg-gray-900 flex-shrink-0 w-full sm:w-auto sm:min-w-[160px]">
+              <div className="border-[3px] border-black dark:border-white bg-white dark:bg-gray-900 w-full md:w-auto md:min-w-[160px] flex-shrink-0">
                 <table className="w-full text-[11px] sm:text-[13px]">
                   <tbody>
                     {[
@@ -217,22 +233,6 @@ export default function CalendarLeaf({
                 <div className="text-[10px] mt-2 font-black">HİKMETLİ SÖZ</div>
               </>
             )}
-          </div>
-        </div>
-
-        {/* Ay ve gün numarası — en alta */}
-        <div className="text-center py-4 border-b-[2px] border-black dark:border-gray-300">
-          <h2
-            className="font-black tracking-[0.1em] sm:tracking-[0.2em] leading-none text-black dark:text-white mb-1"
-            style={{ fontSize: 'clamp(1.25rem, 8vw, 3rem)' }}
-          >
-            {monthName}
-          </h2>
-          <div
-            className="font-black leading-none text-black dark:text-white"
-            style={{ fontSize: 'clamp(3rem, 22vw, 7rem)', letterSpacing: '-0.05em' }}
-          >
-            {day}
           </div>
         </div>
 
