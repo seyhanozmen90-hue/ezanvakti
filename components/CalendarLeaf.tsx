@@ -110,21 +110,10 @@ export default function CalendarLeaf({
           </div>
         </div>
 
-        {/* Ana içerik: Ay adı + (Saat + Tablo) + Gün numarası - flex-wrap ile mobilde alta geçer */}
+        {/* Ana içerik: Sol saat, sağda şehir adı + namaz vakitleri tablosu */}
         <div className="py-3 px-3 sm:px-4">
-          {/* Ay adı - clamp ile taşma önlenir */}
-          <div className="text-center mb-3 overflow-hidden">
-            <h2
-              className="font-black tracking-[0.1em] sm:tracking-[0.25em] leading-none text-black dark:text-white"
-              style={{ fontSize: 'clamp(1.25rem, 8vw, 3rem)' }}
-            >
-              {monthName}
-            </h2>
-          </div>
-
-          {/* Saat + Tablo + Gün numarası - flex-wrap, mobilde sıralama: gün ortada veya üstte */}
-          <div className="flex flex-wrap items-start justify-center gap-4 sm:gap-6">
-            {/* Analog saat + şehir adı */}
+          <div className="flex flex-wrap items-start justify-between gap-4 sm:gap-6">
+            {/* Sol: Sadece analog saat (şehir adı burada değil) */}
             <div className="flex flex-col items-center flex-shrink-0 order-1">
               <div
                 className="rounded-full border-[3px] border-black dark:border-white bg-white dark:bg-gray-900 relative flex-shrink-0"
@@ -141,37 +130,31 @@ export default function CalendarLeaf({
                   <circle cx="50" cy="50" r="3" className="fill-black dark:fill-white" />
                 </svg>
               </div>
-              <div className="text-[10px] sm:text-[12px] font-black mt-1 text-black dark:text-white text-center max-w-full truncate px-1">{displayCityLabel}</div>
             </div>
 
-            {/* Namaz vakitleri tablosu */}
-            <div className="border-[3px] border-black dark:border-white bg-white dark:bg-gray-900 flex-shrink-0 order-2 min-w-0 w-full sm:w-auto sm:min-w-[160px]">
-              <table className="w-full text-[11px] sm:text-[13px]">
-                <tbody>
-                  {[
-                    { label: 'Güneş', time: prayerTimes.gunes },
-                    { label: 'Öğle', time: prayerTimes.ogle },
-                    { label: 'İkindi', time: prayerTimes.ikindi },
-                    { label: 'Akşam', time: prayerTimes.aksam },
-                    { label: 'Yatsı', time: prayerTimes.yatsi },
-                    { label: 'İmsak', time: prayerTimes.imsak },
-                  ].map(({ label, time }) => (
-                    <tr key={label} className="border-b-[2px] border-black dark:border-white last:border-b-0">
-                      <td className="py-1 px-2 font-black text-left text-black dark:text-white">{label}</td>
-                      <td className="py-1 px-2 font-black text-right tabular-nums text-black dark:text-white">{time}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Gün numarası - clamp ile taşma önlenir */}
-            <div className="flex items-center justify-center flex-shrink-0 order-3 w-full sm:w-auto">
-              <div
-                className="font-black leading-none text-black dark:text-white"
-                style={{ fontSize: 'clamp(3.5rem, 25vw, 8.75rem)', letterSpacing: '-0.05em' }}
-              >
-                {day}
+            {/* Sağ: İl adı (üstte) + Namaz vakitleri tablosu */}
+            <div className="flex flex-col items-end flex-shrink-0 order-2 min-w-0 ml-auto sm:ml-0">
+              <div className="text-[11px] sm:text-[13px] font-black text-black dark:text-white mb-1.5 text-right w-full sm:min-w-[160px]">
+                {displayCityLabel}
+              </div>
+              <div className="border-[3px] border-black dark:border-white bg-white dark:bg-gray-900 flex-shrink-0 w-full sm:w-auto sm:min-w-[160px]">
+                <table className="w-full text-[11px] sm:text-[13px]">
+                  <tbody>
+                    {[
+                      { label: 'Güneş', time: prayerTimes.gunes },
+                      { label: 'Öğle', time: prayerTimes.ogle },
+                      { label: 'İkindi', time: prayerTimes.ikindi },
+                      { label: 'Akşam', time: prayerTimes.aksam },
+                      { label: 'Yatsı', time: prayerTimes.yatsi },
+                      { label: 'İmsak', time: prayerTimes.imsak },
+                    ].map(({ label, time }) => (
+                      <tr key={label} className="border-b-[2px] border-black dark:border-white last:border-b-0">
+                        <td className="py-1 px-2 font-black text-left text-black dark:text-white">{label}</td>
+                        <td className="py-1 px-2 font-black text-right tabular-nums text-black dark:text-white">{time}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -220,18 +203,13 @@ export default function CalendarLeaf({
           </div>
         </div>
 
-        {/* Şiir / söz */}
+        {/* Şiir / hikmetli söz (tarihte bugün burada değil, en altta) */}
         <div className="text-center py-3 border-b-[2px] border-black dark:border-gray-300 min-h-[90px] flex items-center justify-center">
           <div className="text-[10px] sm:text-[11px] px-4 sm:px-6 leading-snug text-black dark:text-white">
             {dayData?.quote ? (
               <>
                 <p className="font-normal italic">{dayData.quote.text}</p>
                 <div className="text-[10px] mt-2 font-black uppercase">{dayData.quote.author || dayData.quote.source || ''}</div>
-              </>
-            ) : dayData?.historyToday?.length ? (
-              <>
-                <p className="font-normal italic">{dayData.historyToday[0].description}</p>
-                <div className="text-[10px] mt-2 font-black">{dayData.historyToday[0].title}</div>
               </>
             ) : (
               <>
@@ -241,6 +219,37 @@ export default function CalendarLeaf({
             )}
           </div>
         </div>
+
+        {/* Ay ve gün numarası — en alta */}
+        <div className="text-center py-4 border-b-[2px] border-black dark:border-gray-300">
+          <h2
+            className="font-black tracking-[0.1em] sm:tracking-[0.2em] leading-none text-black dark:text-white mb-1"
+            style={{ fontSize: 'clamp(1.25rem, 8vw, 3rem)' }}
+          >
+            {monthName}
+          </h2>
+          <div
+            className="font-black leading-none text-black dark:text-white"
+            style={{ fontSize: 'clamp(3rem, 22vw, 7rem)', letterSpacing: '-0.05em' }}
+          >
+            {day}
+          </div>
+        </div>
+
+        {/* Tarihte bugün önemli ne oldu — en alt not */}
+        {dayData?.historyToday && dayData.historyToday.length > 0 && (
+          <div className="text-center py-3 border-b-[2px] border-black dark:border-gray-300 px-3">
+            <div className="text-[10px] font-black uppercase text-black dark:text-white mb-1.5">Tarihte bugün önemli ne oldu</div>
+            <div className="text-[10px] sm:text-[11px] leading-snug text-black dark:text-white">
+              {dayData.historyToday.map((item, idx) => (
+                <div key={idx} className="mb-1.5 last:mb-0">
+                  <span className="font-black">{item.title}</span>
+                  {item.description && <span className="font-normal"> — {item.description}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="text-center py-2">
           <h4 className="text-[11px] sm:text-[13px] font-black tracking-wide text-black dark:text-white">Büyük Saatli Maarif Takvimi</h4>
