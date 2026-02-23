@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/lib/navigation';
 import { City, District } from '@/lib/types';
@@ -37,6 +38,10 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
   const [districtOpen, setDistrictOpen] = useState(false);
   const cityRef = useRef<HTMLDivElement>(null);
   const districtRef = useRef<HTMLDivElement>(null);
+  const cityInputRef = useRef<HTMLInputElement>(null);
+  const districtInputRef = useRef<HTMLInputElement>(null);
+  const [cityDropdownRect, setCityDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [districtDropdownRect, setDistrictDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
 
   useEffect(() => {
     if (currentCity) {
@@ -62,10 +67,56 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
     ? sortedDistricts.filter((d) => matchesSearch(d.name, districtQuery) || matchesSearch(d.slug, districtQuery))
     : sortedDistricts;
 
+  const updateCityDropdownRect = () => {
+    const el = cityInputRef.current;
+    if (el) {
+      const r = el.getBoundingClientRect();
+      setCityDropdownRect({ top: r.bottom, left: r.left, width: r.width });
+    }
+  };
+  const updateDistrictDropdownRect = () => {
+    const el = districtInputRef.current;
+    if (el) {
+      const r = el.getBoundingClientRect();
+      setDistrictDropdownRect({ top: r.bottom, left: r.left, width: r.width });
+    }
+  };
+
+  useLayoutEffect(() => {
+    if (cityOpen) {
+      updateCityDropdownRect();
+      const onScrollOrResize = () => updateCityDropdownRect();
+      window.addEventListener('scroll', onScrollOrResize, true);
+      window.addEventListener('resize', onScrollOrResize);
+      return () => {
+        window.removeEventListener('scroll', onScrollOrResize, true);
+        window.removeEventListener('resize', onScrollOrResize);
+      };
+    } else {
+      setCityDropdownRect(null);
+    }
+  }, [cityOpen]);
+
+  useLayoutEffect(() => {
+    if (districtOpen) {
+      updateDistrictDropdownRect();
+      const onScrollOrResize = () => updateDistrictDropdownRect();
+      window.addEventListener('scroll', onScrollOrResize, true);
+      window.addEventListener('resize', onScrollOrResize);
+      return () => {
+        window.removeEventListener('scroll', onScrollOrResize, true);
+        window.removeEventListener('resize', onScrollOrResize);
+      };
+    } else {
+      setDistrictDropdownRect(null);
+    }
+  }, [districtOpen]);
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (cityRef.current && !cityRef.current.contains(e.target as Node)) setCityOpen(false);
-      if (districtRef.current && !districtRef.current.contains(e.target as Node)) setDistrictOpen(false);
+      const target = e.target as Node;
+      if (cityRef.current && !cityRef.current.contains(target) && !document.getElementById('city-dropdown-portal')?.contains(target)) setCityOpen(false);
+      if (districtRef.current && !districtRef.current.contains(target) && !document.getElementById('district-dropdown-portal')?.contains(target)) setDistrictOpen(false);
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -103,13 +154,82 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
   };
 
   const inputBase = 'w-full px-3 py-2 pr-9 bg-navy-darkest/70 backdrop-blur-sm rounded-lg shadow-md border border-gold-500/30 hover:border-gold-500/50 text-gold-300 dark:text-gold-300 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-gold-500';
-  const dropdownList = 'absolute left-0 right-0 top-full mt-1 z-50 max-h-56 overflow-y-auto rounded-lg border border-gold-500/30 bg-navy-darkest shadow-xl';
+  const dropdownListBase = 'max-h-56 overflow-y-auto rounded-lg border border-gold-500/30 bg-navy-darkest shadow-xl z-[9999]';
+
+  const cityDropdownEl =
+    cityOpen && cityDropdownRect && typeof document !== 'undefined'
+      ? createPortal(
+          <ul
+            id="city-dropdown-portal"
+            role="listbox"
+            className={dropdownListBase + ' mt-1'}
+            style={{
+              position: 'fixed',
+              top: cityDropdownRect.top + 4,
+              left: cityDropdownRect.left,
+              width: cityDropdownRect.width,
+              minWidth: 200,
+            }}
+          >
+            {filteredCities.length === 0 ? (
+              <li className="px-3 py-2 text-sm text-gold-300/70">Sonuç yok</li>
+            ) : (
+              filteredCities.map((city) => (
+                <li
+                  key={city.slug}
+                  role="option"
+                  onClick={() => handleCitySelect(city)}
+                  className="px-3 py-2 text-sm font-medium text-gold-300 hover:bg-gold-500/20 cursor-pointer"
+                >
+                  {city.name}
+                </li>
+              ))
+            )}
+          </ul>,
+          document.body
+        )
+      : null;
+
+  const districtDropdownEl =
+    districtOpen && selectedCitySlug && districtDropdownRect && typeof document !== 'undefined'
+      ? createPortal(
+          <ul
+            id="district-dropdown-portal"
+            role="listbox"
+            className={dropdownListBase + ' mt-1'}
+            style={{
+              position: 'fixed',
+              top: districtDropdownRect.top + 4,
+              left: districtDropdownRect.left,
+              width: districtDropdownRect.width,
+              minWidth: 200,
+            }}
+          >
+            {filteredDistricts.length === 0 ? (
+              <li className="px-3 py-2 text-sm text-gold-300/70">Sonuç yok</li>
+            ) : (
+              filteredDistricts.map((district) => (
+                <li
+                  key={district.slug}
+                  role="option"
+                  onClick={() => handleDistrictSelect(district)}
+                  className="px-3 py-2 text-sm font-medium text-gold-300 hover:bg-gold-500/20 cursor-pointer"
+                >
+                  {district.name}
+                </li>
+              ))
+            )}
+          </ul>,
+          document.body
+        )
+      : null;
 
   return (
     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-      {/* İl: yazarak ara + dropdown */}
+      {/* İl: yazarak ara + dropdown (portal ile body'de render) */}
       <div ref={cityRef} className="relative w-full sm:w-auto sm:min-w-[200px]">
         <input
+          ref={cityInputRef}
           type="text"
           value={cityOpen ? cityQuery : (selectedCity?.name ?? '')}
           onChange={(e) => {
@@ -128,29 +248,13 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
-        {cityOpen && (
-          <ul className={dropdownList} role="listbox">
-            {filteredCities.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-gold-300/70">Sonuç yok</li>
-            ) : (
-              filteredCities.map((city) => (
-                <li
-                  key={city.slug}
-                  role="option"
-                  onClick={() => handleCitySelect(city)}
-                  className="px-3 py-2 text-sm font-medium text-gold-300 hover:bg-gold-500/20 cursor-pointer"
-                >
-                  {city.name}
-                </li>
-              ))
-            )}
-          </ul>
-        )}
       </div>
+      {cityDropdownEl}
 
-      {/* İlçe: yazarak ara + dropdown */}
+      {/* İlçe: yazarak ara + dropdown (portal ile body'de render) */}
       <div ref={districtRef} className="relative w-full sm:w-auto sm:min-w-[200px]">
         <input
+          ref={districtInputRef}
           type="text"
           value={districtOpen ? districtQuery : (selectedDistrict?.name ?? '')}
           onChange={(e) => {
@@ -170,25 +274,8 @@ export default function CitySelector({ currentCity, currentDistrict, locale }: C
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
-        {districtOpen && selectedCitySlug && (
-          <ul className={dropdownList} role="listbox">
-            {filteredDistricts.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-gold-300/70">Sonuç yok</li>
-            ) : (
-              filteredDistricts.map((district) => (
-                <li
-                  key={district.slug}
-                  role="option"
-                  onClick={() => handleDistrictSelect(district)}
-                  className="px-3 py-2 text-sm font-medium text-gold-300 hover:bg-gold-500/20 cursor-pointer"
-                >
-                  {district.name}
-                </li>
-              ))
-            )}
-          </ul>
-        )}
       </div>
+      {districtDropdownEl}
     </div>
   );
 }
