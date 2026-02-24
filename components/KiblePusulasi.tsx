@@ -242,7 +242,13 @@ export default function KiblePusulasi() {
 
   const yonMesaji = (): { metin: string; renk: string; ikon: string } | null => {
     if (!sensorVar)
-      return { metin: 'Pusula sensörü yok — statik yön gösteriliyor', renk: 'amber', ikon: '⚠️' };
+      return {
+        metin: kiblaAcisi != null
+          ? `Kıble açısı ${Math.round(kiblaAcisi)}° — Açıyı gerçek kuzeye göre hizalayın`
+          : 'Kıble açısı hesaplandı — Yönü kuzey referansıyla hizalayın',
+        renk: 'amber',
+        ikon: '🧭',
+      };
     if (kalanAci === null) return { metin: 'Sensör bekleniyor...', renk: 'slate', ikon: '🔄' };
     if (dogruYon) return { metin: 'DOĞRU YÖNDESINIZ! 🕋', renk: 'emerald', ikon: '✅' };
     const derece = Math.abs(Math.round(kalanAci));
@@ -445,12 +451,13 @@ export default function KiblePusulasi() {
             </div>
           </div>
 
-          {!sensorVar && (
+          {!sensorVar && kiblaAcisi != null && (
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4">
-              <p className="text-amber-400 text-sm text-center">
-                ⚠️ Pusula sensörü desteklenmiyor.
-                <br />
-                Hesaplanan kıble yönü statik gösteriliyor.
+              <p className="text-amber-400 text-sm text-center font-medium mb-1">
+                🧭 Cihazınızda pusula sensörü yok veya erişilemiyor
+              </p>
+              <p className="text-amber-300/90 text-xs text-center">
+                Kıble yönünüz <strong>{Math.round(kiblaAcisi)}°</strong> (kuzeyden saat yönünde). Bu açıyı fiziksel bir pusula veya güneşin konumuyla karşılaştırarak yönü bulabilirsiniz.
               </p>
             </div>
           )}
