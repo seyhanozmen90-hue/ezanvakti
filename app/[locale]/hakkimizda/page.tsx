@@ -32,8 +32,7 @@ export default async function HakkimizdaPage() {
             </h2>
             <p className="text-navy-900 dark:text-gold-300 text-base sm:text-lg leading-relaxed">
               Ezan Vakti, Türkiye&apos;nin her yerinden Müslümanların namaz vakitlerini doğru ve kolay bir şekilde 
-              öğrenmelerini sağlamak amacıyla kurulmuştur. Diyanet İşleri Başkanlığı&apos;nın resmi verilerini 
-              kullanarak, tüm il ve ilçeler için güncel namaz vakitlerini sunuyoruz.
+              öğrenmelerini sağlamak amacıyla kurulmuştur. Tüm il ve ilçeler için güncel namaz vakitlerini sunuyoruz.
             </p>
           </div>
 
@@ -49,7 +48,7 @@ export default async function HakkimizdaPage() {
                 <div>
                   <h3 className="font-black text-navy-900 dark:text-gold-300 mb-1">Doğru Vakitler</h3>
                   <p className="text-sm text-navy-700 dark:text-gold-400/70">
-                    Diyanet İşleri Başkanlığı&apos;nın resmi verilerinden güncel namaz vakitleri
+                    Güncel hesaplamalara dayalı namaz vakitleri
                   </p>
                 </div>
               </div>
@@ -113,9 +112,8 @@ export default async function HakkimizdaPage() {
               Veri Kaynağımız
             </h2>
             <p className="text-navy-900 dark:text-gold-300 text-base sm:text-lg leading-relaxed">
-              Tüm namaz vakitleri <strong>Diyanet İşleri Başkanlığı</strong>&apos;nın resmi verilerine 
-              dayanmaktadır. Hicri tarih bilgileri ve dini günler güncel kaynaklardan alınmakta 
-              ve düzenli olarak güncellenmektedir.
+              Tüm namaz vakitleri astronomik hesaplamalara dayanmaktadır. Hicri tarih bilgileri ve dini günler 
+              güncel kaynaklardan alınmakta ve düzenli olarak güncellenmektedir.
             </p>
           </div>
 

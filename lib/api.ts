@@ -3,7 +3,8 @@ import { getMockPrayerTimes, getMockTodayPrayerTimes } from './mock-data';
 import { turkishizeHijriDate } from './utils';
 
 const API_BASE_URL = 'https://api.diyanet.gov.tr/api/PrayerTime';
-const USE_MOCK_DATA = true; // API çalışmadığında true yapın
+/** Mock sadece son fallback için; önce Diyanet, sonra Aladhan denenecek */
+const USE_MOCK_DATA = false;
 
 export interface DiyanetApiResponse {
   data: Array<{
@@ -19,7 +20,40 @@ export interface DiyanetApiResponse {
 }
 
 /**
- * Diyanet API'den namaz vakitlerini çeker
+ * Sadece Diyanet API dener; hata/başarısızlıkta null döner (mock yok).
+ * Öncelik sırasında primary kaynak olarak kullanılır.
+ */
+export async function tryFetchPrayerTimesFromDiyanet(
+  cityId: string,
+  districtId?: string
+): Promise<PrayerTime[] | null> {
+  try {
+    const targetId = districtId || cityId;
+    const url = `${API_BASE_URL}/GetPrayerTimes?districtID=${targetId}`;
+    const response = await fetch(url, {
+      next: { revalidate: 3600 },
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) return null;
+    const data: DiyanetApiResponse = await response.json();
+    if (!data.data || data.data.length === 0) return null;
+    return data.data.map((item) => ({
+      date: item.MiladiTarihKisa,
+      hijriDate: turkishizeHijriDate(item.HicriTarihKisa),
+      imsak: item.Imsak,
+      gunes: item.Gunes,
+      ogle: item.Ogle,
+      ikindi: item.Ikindi,
+      aksam: item.Aksam,
+      yatsi: item.Yatsi,
+    }));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Diyanet API'den namaz vakitlerini çeker (hata durumunda mock fallback)
  * @param cityId - İl ID'si (Diyanet API'den)
  * @param districtId - İlçe ID'si (Diyanet API'den) - opsiyonel
  * @returns Namaz vakitleri dizisi

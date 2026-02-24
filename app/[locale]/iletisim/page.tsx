@@ -67,14 +67,7 @@ export default async function IletisimPage() {
                   <span className="text-2xl mt-1">🕌</span>
                   <div>
                     <h3 className="font-black text-navy-900 dark:text-gold-300 mb-1">Veri Kaynağı</h3>
-                    <a 
-                      href="https://www.diyanet.gov.tr" 
-                      className="text-gold-600 dark:text-gold-400 hover:text-gold-700 dark:hover:text-gold-300 transition-colors"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Diyanet İşleri Başkanlığı
-                    </a>
+                    <span className="text-gold-600 dark:text-gold-400">Veri kaynağı</span>
                   </div>
                 </div>
               </div>
@@ -205,7 +198,7 @@ export default async function IletisimPage() {
                 Namaz vakitleri nereden alınıyor?
               </summary>
               <p className="mt-2 text-navy-700 dark:text-gold-400/70 text-sm">
-                Tüm namaz vakitleri Diyanet İşleri Başkanlığı&apos;nın resmi verilerinden alınmaktadır ve düzenli olarak güncellenmektedir.
+                Tüm namaz vakitleri güncel hesaplamalara göre alınmakta ve düzenli olarak güncellenmektedir.
               </p>
             </details>
 

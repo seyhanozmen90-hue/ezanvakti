@@ -1,7 +1,7 @@
 {
   "name": "Ezan Vakitleri - Türkiye Namaz Saatleri 2026",
   "short_name": "EzanVakti",
-  "description": "Türkiye'nin 81 ili için güncel, Diyanet onaylı namaz vakitleri. Offline çalışır.",
+  "description": "Türkiye'nin 81 ili için güncel namaz vakitleri. Offline çalışır.",
   "start_url": "/tr/istanbul",
   "scope": "/",
   "display": "standalone",

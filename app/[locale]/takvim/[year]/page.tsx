@@ -133,7 +133,7 @@ export default function YearPage({ params }: PageProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span className="text-sm text-gray-700 dark:text-gray-300">
-            Tüm vakitler Diyanet İşleri Başkanlığı verilerine göre gösterilmektedir
+            Tüm vakitler güncel hesaplamalara göre gösterilmektedir
           </span>
         </div>
       </div>

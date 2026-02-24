@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { getTodayPrayerTimes, getMonthlyPrayerTimes } from '@/lib/api';
+import { getTodayPrayerTimes, getMonthlyPrayerTimes, tryFetchPrayerTimesFromDiyanet } from '@/lib/api';
 import { getDistrictBySlug, getAllCityDistrictCombinations, getCityBySlug } from '@/lib/cities-helper';
 import { getNextPrayerTime, formatDate, formatHijriDate, isRamadan } from '@/lib/utils';
 import { isDistrictIndexed } from '@/lib/seo.config';
@@ -96,8 +96,8 @@ export async function generateMetadata({ params }: DistrictPageProps): Promise<M
   const shouldIndex = isDistrictIndexed(city.slug, district.slug);
 
   return {
-    title: `${city.name} ${district.name} Namaz Vakitleri ${currentYear} | Diyanet Onaylı`,
-    description: `${city.name} ${district.name} namaz vakitleri ${currentYear}. Güncel imsak, öğle, ikindi, akşam, yatsı saatleri. ${district.name} ilçesi için Diyanet onaylı ezan vakitleri ve aylık takvim.`,
+    title: `${city.name} ${district.name} Namaz Vakitleri ${currentYear}`,
+    description: `${city.name} ${district.name} namaz vakitleri ${currentYear}. Güncel imsak, öğle, ikindi, akşam, yatsı saatleri. ${district.name} ilçesi için ezan vakitleri ve aylık takvim.`,
     keywords: keywords.join(', '),
     authors: [{ name: 'Ezan Vakitleri' }],
     creator: 'Ezan Vakitleri',
@@ -165,27 +165,45 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
   const tNav = await getTranslations({ locale: params.locale, namespace: 'nav' });
   const tFooter = await getTranslations({ locale: params.locale, namespace: 'footer' });
 
-  // Check if coordinates exist for this district
   const hasCoordinates = hasCoordsExist(city.slug, district.slug);
-  
+  const today = new Date();
+  const todayStr = today.toLocaleDateString('tr-TR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
   let todayTimes: PrayerTime | null = null;
   let monthlyTimes: PrayerTime[] = [];
   let isDbBacked = false;
+  let usedSecondaryOrFallback = true;
 
-  if (hasCoordinates) {
-    // New system: DB-backed with provider fallback (district-level)
+  // 1) Primary: Diyanet API (ilçe ID ile)
+  const diyanetMonthly = await tryFetchPrayerTimesFromDiyanet(city.id, district.id);
+  if (diyanetMonthly && diyanetMonthly.length > 0) {
+    const found = diyanetMonthly.find((t) => t.date === todayStr) || diyanetMonthly[0];
+    todayTimes = {
+      ...found,
+      date: formatDateForDisplay(date),
+    };
+    monthlyTimes = diyanetMonthly.map((t) => ({
+      ...t,
+      date: t.date,
+      hijriDateShort: t.hijriDate ?? '',
+      hijriDateLong: t.hijriDate ?? '',
+    }));
+    usedSecondaryOrFallback = false;
+  }
+
+  // 2) Secondary: Aladhan / DB (koordinat varsa)
+  if (!todayTimes && hasCoordinates) {
     try {
-      // Get today's date in YYYY-MM-DD format
-      const today = new Date();
-      const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
       const serviceResult = await getPrayerTimes({
         city_slug: city.slug,
         district_slug: district.slug,
         date,
       });
-
-      // Convert service result to PrayerTime format
       todayTimes = {
         imsak: serviceResult.timings.fajr,
         gunes: serviceResult.timings.sunrise,
@@ -193,28 +211,22 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
         ikindi: serviceResult.timings.asr,
         aksam: serviceResult.timings.maghrib,
         yatsi: serviceResult.timings.isha,
-        date: formatDateForDisplay(date), // Convert to DD.MM.YYYY for consistency
+        date: formatDateForDisplay(date),
       };
-
       isDbBacked = true;
-
-      // Fetch monthly data from DB-backed system (direct service call, not HTTP)
       try {
         const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
         const [year, monthNum] = currentMonth.split('-').map(Number);
         const daysInMonth = new Date(year, monthNum, 0).getDate();
-        
         const monthlyResults = [];
         for (let day = 1; day <= daysInMonth; day++) {
           const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          
           try {
             const dayResult = await getPrayerTimes({
               city_slug: city.slug,
               district_slug: district.slug,
               date: dateStr,
             });
-            
             monthlyResults.push({
               date: formatDateForDisplay(dateStr),
               imsak: dayResult.timings.fajr,
@@ -224,27 +236,21 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
               aksam: dayResult.timings.maghrib,
               yatsi: dayResult.timings.isha,
             });
-          } catch (dayError) {
-            console.error(`Failed to fetch prayer times for ${dateStr}:`, dayError);
-            // Skip days with errors - don't add placeholder rows
-            // This prevents empty "--:--" rows in the monthly table
+          } catch {
+            // skip day
           }
         }
-        
         monthlyTimes = monthlyResults;
-      } catch (monthlyError) {
-        console.error('Monthly prayer times generation failed:', monthlyError);
-        // Fallback to legacy only if entire monthly generation fails
+      } catch {
         monthlyTimes = await getMonthlyPrayerTimes(city.id, district.id);
       }
-    } catch (error) {
-      console.error('DB-backed prayer times failed for district:', error);
-      // Fallback to old system
-      todayTimes = await getTodayPrayerTimes(city.id, district.id);
-      monthlyTimes = await getMonthlyPrayerTimes(city.id, district.id);
+    } catch {
+      // fallback below
     }
-  } else {
-    // Old system: Diyanet API (city & district ID based)
+  }
+
+  // 3) Last fallback: legacy (boş sayfa dönme)
+  if (!todayTimes) {
     todayTimes = await getTodayPrayerTimes(city.id, district.id);
     monthlyTimes = await getMonthlyPrayerTimes(city.id, district.id);
   }
@@ -392,10 +398,10 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
                       {formatHijriDate(todayTimes.hijriDate)}
                     </p>
                   )}
-                  {/* Koordinat bilgisi yoksa uyarı */}
-                  {!hasCoordinates && (
+                  {/* Primary dışı kaynak kullanıldıysa nötr uyarı */}
+                  {usedSecondaryOrFallback && (
                     <div className="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded border border-amber-300 dark:border-amber-700/50">
-                      ℹ️ Bu ilçe için geçici olarak Diyanet verisi gösteriliyor.
+                      ℹ️ Bu ilçe için yedek veri kaynağı kullanılıyor.
                     </div>
                   )}
                   {/* Duvar Takvimi Linki */}

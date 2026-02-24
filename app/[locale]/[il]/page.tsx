@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { getTodayPrayerTimes, getMonthlyPrayerTimes } from '@/lib/api';
-import { getCityBySlug, getAllCities } from '@/lib/cities-helper';
+import { getTodayPrayerTimes, getMonthlyPrayerTimes, tryFetchPrayerTimesFromDiyanet } from '@/lib/api';
+import { getCityBySlug } from '@/lib/cities-helper';
 import { getNextPrayerTime, formatDate, formatHijriDate, isRamadan } from '@/lib/utils';
 import { getPrayerTimes } from '@/lib/services/prayerTimesService';
 import { hasCoordsExist } from '@/lib/geo/tr';
@@ -17,8 +17,8 @@ import CityComingSoon from '@/components/CityComingSoon';
 import IftarCard from '@/components/IftarCard';
 import { PrayerName, PrayerTime } from '@/lib/types';
 
-// Force dynamic rendering (SSR) - no static generation
-export const dynamic = 'force-dynamic';
+// ISR: ilk istekte server'da üretilir, 1 saat cache — build'de SSG yok (429 riski yok)
+export const revalidate = 3600;
 
 /**
  * Convert YYYY-MM-DD to DD.MM.YYYY for display
@@ -58,7 +58,7 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
 
   return {
     title: `${sehirAdi} Namaz Vakitleri ${yil} | Günlük Ezan Saatleri`,
-    description: `${sehirAdi} namaz vakitleri ${bugun}. Diyanet onaylı güncel imsak, güneş, öğle, ikindi, akşam, yatsı saatleri. ${sehirAdi} ${yil} imsakiye ve iftar vakitleri.`,
+    description: `${sehirAdi} namaz vakitleri ${bugun}. Güncel imsak, güneş, öğle, ikindi, akşam, yatsı saatleri. ${sehirAdi} ${yil} imsakiye ve iftar vakitleri.`,
     keywords: [
       `${sehirAdi} namaz vakitleri`,
       `${sehirAdi} ezan vakitleri`,
@@ -103,49 +103,58 @@ export default async function CityPage({ params }: CityPageProps) {
   const tLocation = await getTranslations({ locale: params.locale, namespace: 'location' });
   const tFooter = await getTranslations({ locale: params.locale, namespace: 'footer' });
 
-  // Check if coordinates exist for this city
   const hasCoordinates = hasCoordsExist(city.slug);
-  
+  const todayStr = new Date().toLocaleDateString('tr-TR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  const today = new Date();
+  const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
   let todayTimes: PrayerTime | null = null;
   let monthlyTimes: PrayerTime[] = [];
   let isDbBacked = false;
+  /** Primary (Diyanet) kullanılmadıysa nötr uyarı göster */
+  let usedSecondaryOrFallback = true;
 
-  if (hasCoordinates) {
-    // New system: DB-backed with provider fallback
+  // 1) Primary: Diyanet API (çalışıyorsa)
+  const diyanetMonthly = await tryFetchPrayerTimesFromDiyanet(city.id);
+  if (diyanetMonthly && diyanetMonthly.length > 0) {
+    const found = diyanetMonthly.find((t) => t.date === todayStr) || diyanetMonthly[0];
+    todayTimes = {
+      ...found,
+      date: formatDateForDisplay(date),
+    };
+    monthlyTimes = diyanetMonthly.map((t) => ({
+      ...t,
+      date: t.date,
+      hijriDateShort: t.hijriDate ?? '',
+      hijriDateLong: t.hijriDate ?? '',
+    }));
+    usedSecondaryOrFallback = false;
+  }
+
+  // 2) Secondary: Aladhan / mevcut sağlayıcı (Diyanet başarısızsa ve koordinat varsa)
+  if (!todayTimes && hasCoordinates) {
     try {
-      // Get today's date in YYYY-MM-DD format
-      const today = new Date();
-      const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-
-      const result = await getPrayerTimes({
-        city_slug: city.slug,
-        date,
-      });
-
-      // Convert service result to PrayerTime format
+      const result = await getPrayerTimes({ city_slug: city.slug, date });
       todayTimes = {
-        imsak: result.timings.fajr, // Note: Aladhan uses 'fajr' for 'imsak'
+        imsak: result.timings.fajr,
         gunes: result.timings.sunrise,
         ogle: result.timings.dhuhr,
         ikindi: result.timings.asr,
         aksam: result.timings.maghrib,
         yatsi: result.timings.isha,
-        date: formatDateForDisplay(date), // Convert to DD.MM.YYYY for consistency
+        date: formatDateForDisplay(date),
       };
-
       isDbBacked = true;
-
-      // Fetch monthly data using fast Aladhan calendarByCity endpoint
       try {
         const [year, monthNum] = currentMonth.split('-').map(Number);
-        
-        // Import monthly fetcher dynamically
         const { fetchMonthlyPrayerTimes } = await import('@/lib/providers/aladhan-monthly');
-        
         const monthlyData = await fetchMonthlyPrayerTimes(city.slug, year, monthNum);
-        
-        monthlyTimes = monthlyData.map(day => ({
+        monthlyTimes = monthlyData.map((day) => ({
           date: formatDateForDisplay(day.date),
           imsak: day.timings.fajr,
           gunes: day.timings.sunrise,
@@ -156,21 +165,16 @@ export default async function CityPage({ params }: CityPageProps) {
           hijriDateShort: day.hijri_date_short || '',
           hijriDateLong: day.hijri_date_long || '',
         }));
-        
-        console.log(`✅ Loaded ${monthlyTimes.length} days for ${city.name} from Aladhan calendar`);
-      } catch (monthlyError) {
-        console.error('Aladhan monthly fetch failed, using legacy:', monthlyError);
-        // Fallback to legacy only if Aladhan fails
+      } catch {
         monthlyTimes = await getMonthlyPrayerTimes(city.id);
       }
-    } catch (error) {
-      console.error('DB-backed prayer times failed:', error);
-      // Fallback to old system
-      todayTimes = await getTodayPrayerTimes(city.id);
-      monthlyTimes = await getMonthlyPrayerTimes(city.id);
+    } catch {
+      // devam et, aşağıda fallback
     }
-  } else {
-    // Old system: Diyanet API (city ID based)
+  }
+
+  // 3) Last fallback: yerel cache / legacy (boş sayfa dönme)
+  if (!todayTimes) {
     todayTimes = await getTodayPrayerTimes(city.id);
     monthlyTimes = await getMonthlyPrayerTimes(city.id);
   }
@@ -204,7 +208,7 @@ export default async function CityPage({ params }: CityPageProps) {
     '@type': ['WebSite', 'LocalBusiness'],
     name: 'Ezan Vakitleri',
     alternateName: 'Namaz Vakitleri',
-    description: `${city.name} ve Türkiye'nin tüm illeri için güncel, doğru ve Diyanet onaylı namaz vakitleri`,
+    description: `${city.name} ve Türkiye'nin tüm illeri için güncel ve doğru namaz vakitleri`,
     url: `${baseUrl}/tr/${city.slug}`,
     inLanguage: 'tr-TR',
     potentialAction: {
@@ -220,7 +224,7 @@ export default async function CityPage({ params }: CityPageProps) {
     mainEntity: {
       '@type': 'Schedule',
       name: `${city.name} Namaz Vakitleri - ${formatDate(currentDate)}`,
-      description: `${city.name} için ${formatDate(currentDate)} tarihli günlük namaz vakitleri. Diyanet İşleri Başkanlığı verilerine göre hesaplanmıştır.`,
+      description: `${city.name} için ${formatDate(currentDate)} tarihli günlük namaz vakitleri. Astronomik hesaplamalara göre belirlenmiştir.`,
       scheduleTimezone: 'Europe/Istanbul',
       ...(todayTimes && {
         event: [
@@ -383,10 +387,10 @@ export default async function CityPage({ params }: CityPageProps) {
                       {formatHijriDate(todayTimes.hijriDate)}
                     </p>
                   )}
-                  {/* Koordinat bilgisi yoksa uyarı */}
-                  {!hasCoordinates && (
+                  {/* Primary dışı kaynak kullanıldıysa nötr uyarı (kurum adı yok) */}
+                  {usedSecondaryOrFallback && (
                     <div className="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded border border-amber-300 dark:border-amber-700/50">
-                      ℹ️ Bu şehir için geçici olarak Diyanet verisi gösteriliyor.
+                      ℹ️ Bu şehir için yedek veri kaynağı kullanılıyor.
                     </div>
                   )}
                   {/* Duvar Takvimi Linki */}
@@ -466,6 +470,22 @@ export default async function CityPage({ params }: CityPageProps) {
               <MonthlyTable times={monthlyTimes} locale={params.locale} cityName={city.name} />
             </div>
           )}
+
+          {/* SEO: Şehir namaz vakitleri açıklayıcı metin (150–200 kelime, kurum adı yok) */}
+          <section className="mt-8 rounded-xl bg-white dark:bg-navy-dark/60 border border-gold-500/20 dark:border-gold-500/20 p-5 sm:p-6 text-navy-800 dark:text-gold-300/90 text-sm sm:text-base leading-relaxed" aria-label={`${city.name} namaz vakitleri hakkında`}>
+            <h2 className="text-lg font-bold text-navy-900 dark:text-white mb-3">
+              {city.name} Namaz Vakitleri Nasıl Hesaplanır?
+            </h2>
+            <p className="mb-3">
+              {city.name} namaz vakitleri, bulunduğunuz enleme ve boylama göre astronomik hesaplama yöntemleriyle belirlenir. İmsak, güneş, öğle, ikindi, akşam ve yatsı vakitleri; güneşin konumu ve Dünya’nın hareketi dikkate alınarak hesaplanır. Bu nedenle her şehrin vakitleri birbirinden birkaç dakika farklılık gösterebilir.
+            </p>
+            <p className="mb-3">
+              Sitemizde {city.name} için hem günlük namaz saatleri hem de aylık vakit tablosu sunulmaktadır. Günlük sayfada bugünün imsak, iftar ve tüm vakitlerini görebilir; bir sonraki vakte kalan süreyi takip edebilirsiniz. Aylık tablo ile ay boyunca sahur ve iftar saatlerini önceden planlayabilirsiniz. Vakitler, uluslararası kabul gören hesaplama parametreleri kullanılarak güncellenir.
+            </p>
+            <p>
+              {city.name} ezan vakitleri sayfamız mobil uyumludur; isterseniz duvar takvimi görünümüyle günü tek sayfada inceleyebilir veya imsakiye sayfasından Ramazan vakitlerine ulaşabilirsiniz. Tüm veriler Türkiye saati (Europe/Istanbul) ile gösterilir.
+            </p>
+          </section>
 
           {/* Footer */}
           <footer className="mt-8 text-center text-xs sm:text-sm text-navy-900 dark:text-gold-400/70 bg-white dark:bg-navy-darkest/60 backdrop-blur-md rounded-xl p-4 sm:p-5 border border-gold-500 dark:border-gold-500/20 shadow-lg dark:shadow-none">

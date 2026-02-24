@@ -2,7 +2,7 @@
   "site": {
     "title": "Ezan Vakitleri",
     "subtitle": "Türkiye Namaz Vakitleri 2026",
-    "description": "Türkiye'nin tüm illeri ve ilçeleri için güncel ezan vakitleri, namaz saatleri ve aylık vakit cetveli. Diyanet onaylı, güncel ve doğru namaz vakitleri.",
+    "description": "Türkiye'nin tüm illeri ve ilçeleri için güncel ezan vakitleri, namaz saatleri ve aylık vakit cetveli.",
     "copyright": "Tüm hakları saklıdır."
   },
   "nav": {
@@ -100,8 +100,8 @@
   },
   "footer": {
     "dataSource": "Namaz vakitleri",
-    "dataProvider": "Diyanet İşleri Başkanlığı",
-    "dataProviderLink": "verilerine göre gösterilmektedir."
+    "dataProvider": "Güncel hesaplamalara göre",
+    "dataProviderLink": "gösterilmektedir."
   },
   "errors": {
     "404": {
@@ -149,7 +149,7 @@
     "metaTitle": "Hakkımızda - Ezan Vakitleri",
     "metaDescription": "Ezan Vakitleri, Türkiye'nin tüm illeri ve ilçeleri için güncel ve doğru namaz vakitlerini sunan modern bir platformdur.",
     "missionTitle": "Misyonumuz",
-    "missionDescription": "Ezan Vakitleri, Türkiye'nin her yerinde yaşayan Müslümanlara güncel, doğru ve erişilebilir namaz vakitleri sunmayı amaçlayan modern bir platformdur. Diyanet İşleri Başkanlığı'nın resmi verilerini kullanarak, ibadetlerinizi zamanında yerine getirmenize yardımcı oluyoruz.",
+    "missionDescription": "Ezan Vakitleri, Türkiye'nin her yerinde yaşayan Müslümanlara güncel, doğru ve erişilebilir namaz vakitleri sunmayı amaçlayan modern bir platformdur. İbadetlerinizi zamanında yerine getirmenize yardımcı oluyoruz.",
     "featuresTitle": "Özelliklerimiz",
     "feature1Title": "Tüm İl ve İlçeler",
     "feature1Description": "Türkiye'nin 81 ili ve tüm ilçeleri için detaylı namaz vakitleri",
@@ -165,8 +165,8 @@
     "feature6Description": "Tüm cihazlarda sorunsuz çalışan responsive tasarım",
     "techTitle": "Kullanılan Teknolojiler",
     "dataSourceTitle": "Veri Kaynağı",
-    "dataSourceDescription": "Tüm namaz vakitleri, Diyanet İşleri Başkanlığı'nın resmi verilerine dayanmaktadır. Bu sayede en güncel ve doğru bilgilere erişebilirsiniz.",
-    "dataSourceLink": "Diyanet İşleri Başkanlığı'nı Ziyaret Edin",
+    "dataSourceDescription": "Tüm namaz vakitleri astronomik hesaplamalara dayanmaktadır. En güncel ve doğru bilgilere erişebilirsiniz.",
+    "dataSourceLink": "Veri kaynağı",
     "contactCTA": "Bizimle İletişime Geçin",
     "contactCTADescription": "Sorularınız, önerileriniz veya geri bildirimleriniz için bize ulaşabilirsiniz.",
     "contactButton": "İletişim",

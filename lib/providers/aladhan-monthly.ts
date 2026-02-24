@@ -213,8 +213,7 @@ export async function fetchMonthlyPrayerTimes(
       headers: {
         'Accept': 'application/json',
       },
-      // Cache for 24 hours (monthly data doesn't change often)
-      next: { revalidate: 86400 },
+      next: { revalidate: 3600 },
     });
     
     clearTimeout(timeoutId);

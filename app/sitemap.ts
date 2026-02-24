@@ -1,22 +1,10 @@
 import { MetadataRoute } from 'next';
-
-const ILLER = [
-  'adana', 'adiyaman', 'afyonkarahisar', 'agri', 'aksaray', 'amasya', 'ankara',
-  'antalya', 'ardahan', 'artvin', 'aydin', 'balikesir', 'bartin', 'batman',
-  'bayburt', 'bilecik', 'bingol', 'bitlis', 'bolu', 'burdur', 'bursa', 'canakkale',
-  'cankiri', 'corum', 'denizli', 'diyarbakir', 'duzce', 'edirne', 'elazig',
-  'erzincan', 'erzurum', 'eskisehir', 'gaziantep', 'giresun', 'gumushane',
-  'hakkari', 'hatay', 'igdir', 'isparta', 'istanbul', 'izmir', 'kahramanmaras',
-  'karabuk', 'karaman', 'kars', 'kastamonu', 'kayseri', 'kilis', 'kirikkale',
-  'kirklareli', 'kirsehir', 'kocaeli', 'konya', 'kutahya', 'malatya', 'manisa',
-  'mardin', 'mersin', 'mugla', 'mus', 'nevsehir', 'nigde', 'ordu', 'osmaniye',
-  'rize', 'sakarya', 'samsun', 'sanliurfa', 'siirt', 'sinop', 'sirnak', 'sivas',
-  'tekirdag', 'tokat', 'trabzon', 'tunceli', 'usak', 'van', 'yalova', 'yozgat', 'zonguldak',
-];
+import { getAllCities } from '@/lib/cities-helper';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
   const now = new Date();
+  const cities = getAllCities();
 
   const staticPages: MetadataRoute.Sitemap = [
     {
@@ -51,8 +39,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
-  const cityPages: MetadataRoute.Sitemap = ILLER.map((il) => ({
-    url: `${baseUrl}/tr/${il}`,
+  const cityPages: MetadataRoute.Sitemap = cities.map((city) => ({
+    url: `${baseUrl}/tr/${city.slug}`,
     changeFrequency: 'daily' as const,
     priority: 0.9,
     lastModified: now,

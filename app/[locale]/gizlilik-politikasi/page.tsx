@@ -160,7 +160,7 @@ export default function GizlilikPolitikasiPage() {
               Üçüncü Taraf Bağlantılar
             </h2>
             <p className="text-navy-900 dark:text-gold-300 text-sm sm:text-base leading-relaxed">
-              Web sitemiz, Diyanet İşleri Başkanlığı gibi üçüncü taraf web sitelerine bağlantılar içerebilir. 
+              Web sitemiz, üçüncü taraf web sitelerine bağlantılar içerebilir. 
               Bu sitelerin gizlilik politikalarından sorumlu değiliz. Harici siteleri ziyaret ettiğinizde 
               ilgili sitenin gizlilik politikasını incelemenizi öneririz.
             </p>
