@@ -15,6 +15,8 @@ import CitySelector from '@/components/CitySelector';
 import JsonLd from '@/components/JsonLd';
 import CityComingSoon from '@/components/CityComingSoon';
 import IftarCard from '@/components/IftarCard';
+import CitySEOContent from '@/components/CitySEOContent';
+import CityInternalLinks from '@/components/CityInternalLinks';
 import { PrayerName, PrayerTime } from '@/lib/types';
 
 // ISR: ilk istekte server'da üretilir, 1 saat cache — build'de SSG yok (429 riski yok)
@@ -328,6 +330,31 @@ export default async function CityPage({ params }: CityPageProps) {
     },
   };
 
+  // WebPage + BreadcrumbList JSON-LD (sayfa ve site adı, URL, şehir)
+  const pageUrl = `${baseUrl}/${params.locale}/${city.slug}`;
+  const pageJsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebPage',
+        name: `${city.name} Namaz Vakitleri`,
+        url: pageUrl,
+        isPartOf: {
+          '@type': 'WebSite',
+          name: 'ezanvakti.site',
+          url: baseUrl,
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Ana Sayfa', item: `${baseUrl}/${params.locale}` },
+          { '@type': 'ListItem', position: 2, name: `${city.name} Namaz Vakitleri`, item: pageUrl },
+        ],
+      },
+    ],
+  };
+
   // FAQ JSON-LD (şehir sayfası SEO)
   const yil = new Date().getFullYear();
   const faqSchema =
@@ -366,6 +393,7 @@ export default async function CityPage({ params }: CityPageProps) {
   return (
     <>
       <JsonLd data={jsonLd} />
+      <JsonLd data={pageJsonLd} />
       {faqSchema && <JsonLd data={faqSchema} />}
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-navy-darkest dark:via-navy-darker dark:to-navy-dark">
         <div className="container mx-auto px-4 sm:px-6 py-6 max-w-6xl">
@@ -484,21 +512,11 @@ export default async function CityPage({ params }: CityPageProps) {
             </div>
           )}
 
-          {/* SEO: Şehir namaz vakitleri açıklayıcı metin (150–200 kelime, kurum adı yok) */}
-          <section className="mt-8 rounded-xl bg-white dark:bg-navy-dark/60 border border-gold-500/20 dark:border-gold-500/20 p-5 sm:p-6 text-navy-800 dark:text-gold-300/90 text-sm sm:text-base leading-relaxed" aria-label={`${city.name} namaz vakitleri hakkında`}>
-            <h2 className="text-lg font-bold text-navy-900 dark:text-white mb-3">
-              {city.name} Namaz Vakitleri Nasıl Hesaplanır?
-            </h2>
-            <p className="mb-3">
-              {city.name} namaz vakitleri, bulunduğunuz enleme ve boylama göre astronomik hesaplama yöntemleriyle belirlenir. İmsak, güneş, öğle, ikindi, akşam ve yatsı vakitleri; güneşin konumu ve Dünya’nın hareketi dikkate alınarak hesaplanır. Bu nedenle her şehrin vakitleri birbirinden birkaç dakika farklılık gösterebilir.
-            </p>
-            <p className="mb-3">
-              Sitemizde {city.name} için hem günlük namaz saatleri hem de aylık vakit tablosu sunulmaktadır. Günlük sayfada bugünün imsak, iftar ve tüm vakitlerini görebilir; bir sonraki vakte kalan süreyi takip edebilirsiniz. Aylık tablo ile ay boyunca sahur ve iftar saatlerini önceden planlayabilirsiniz. Vakitler, uluslararası kabul gören hesaplama parametreleri kullanılarak güncellenir.
-            </p>
-            <p>
-              {city.name} ezan vakitleri sayfamız mobil uyumludur; isterseniz duvar takvimi görünümüyle günü tek sayfada inceleyebilir veya imsakiye sayfasından Ramazan vakitlerine ulaşabilirsiniz. Tüm veriler Türkiye saati (Europe/Istanbul) ile gösterilir.
-            </p>
-          </section>
+          {/* SEO: Şehir namaz vakitleri metni (250–400 kelime, SSR) */}
+          <CitySEOContent cityName={city.name} citySlug={city.slug} />
+
+          {/* İç linkler: popüler iller + ilçeler (HTML kaynağında görünür) */}
+          <CityInternalLinks locale={params.locale} currentCity={city} />
 
           {/* Footer */}
           <footer className="mt-8 text-center text-xs sm:text-sm text-navy-900 dark:text-gold-400/70 bg-white dark:bg-navy-darkest/60 backdrop-blur-md rounded-xl p-4 sm:p-5 border border-gold-500 dark:border-gold-500/20 shadow-lg dark:shadow-none">
