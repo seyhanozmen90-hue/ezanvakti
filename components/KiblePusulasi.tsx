@@ -38,11 +38,10 @@ function kiblaHesapla(lat: number, lng: number): number {
 }
 
 /**
- * Türkiye için manyetik sapma (magnetic declination): manyetik kuzey, coğrafi kuzeyin ~6° doğusunda.
- * Kerteriz coğrafi (true) hesaplanıyor; pusula manyetik gösterdiği için bu kadar çıkarıyoruz.
- * Kaynak: standart büyük daire + Türkiye ortalama sapma.
+ * Coğrafi kerteriz (kiblaHam) sonrası pusula gösterimi için düzeltme.
+ * Manyetik sapma (~6°) + cihaz/kadran uyumu: pusula ~140–150° sağa kayıyorsa bu açı kadar sola alınır.
  */
-const TURKEY_MAGNETIC_DECLINATION = 6;
+const KIBLE_PUSULA_DUZELTME = 6 + 145; // 6° manyetik sapma + 145° sağa kayma düzeltmesi
 
 /** Haversine → Kabe'ye km */
 function mesafeHesapla(lat: number, lng: number): number {
@@ -250,7 +249,7 @@ export default function KiblePusulasi() {
       async (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
         const kiblaHam = kiblaHesapla(lat, lng);
-        const kibla = (kiblaHam - TURKEY_MAGNETIC_DECLINATION + 360) % 360;
+        const kibla = (kiblaHam - KIBLE_PUSULA_DUZELTME + 360) % 360;
         setKonum({ lat, lng });
         setKiblaAcisi(kibla);
         setMesafe(mesafeHesapla(lat, lng));
