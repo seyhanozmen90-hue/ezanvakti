@@ -35,6 +35,8 @@ export interface GetPrayerTimesParams {
   city_slug: string;
   district_slug?: string;
   date: string; // YYYY-MM-DD
+  /** true ise DB atlanır, doğrudan provider'dan çekilir (örn. İkindi Shafi düzeltmesi sonrası eski cache bypass) */
+  skipCache?: boolean;
 }
 
 /**
@@ -56,22 +58,23 @@ export interface GetPrayerTimesParams {
 export async function getPrayerTimes(
   params: GetPrayerTimesParams
 ): Promise<PrayerTimesResult> {
-  const { city_slug, district_slug, date } = params;
+  const { city_slug, district_slug, date, skipCache } = params;
 
   // Validation: district_slug must always be used with city_slug
   if (district_slug && !city_slug) {
     throw new Error('district_slug cannot be used without city_slug');
   }
 
-  // Step 1: Try DB first
-  const cached = await getPrayerTimesFromDb({
-    city_slug,
-    district_slug,
-    date,
-  });
-
-  if (cached) {
-    return recordToResult(cached, false);
+  // Step 1: Try DB first (skipCache ile şehir sayfası her zaman güncel İkindi/Shafi alır)
+  if (!skipCache) {
+    const cached = await getPrayerTimesFromDb({
+      city_slug,
+      district_slug,
+      date,
+    });
+    if (cached) {
+      return recordToResult(cached, false);
+    }
   }
 
   // Step 2: Not in DB, need to fetch from provider

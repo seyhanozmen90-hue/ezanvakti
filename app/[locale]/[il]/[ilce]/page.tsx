@@ -203,6 +203,7 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
         city_slug: city.slug,
         district_slug: district.slug,
         date,
+        skipCache: true,
       });
       todayTimes = {
         imsak: serviceResult.timings.fajr,

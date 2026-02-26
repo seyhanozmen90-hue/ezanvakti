@@ -30,7 +30,7 @@ export default async function TakvimPage({ params }: PageProps) {
   if (hasCoordsExist(city.slug)) {
     try {
       const [todayResult, yesterdayResult] = await Promise.all([
-        getPrayerTimes({ city_slug: city.slug, date: todayString }),
+        getPrayerTimes({ city_slug: city.slug, date: todayString, skipCache: true }),
         getPrayerTimes({ city_slug: city.slug, date: yesterdayString }),
       ]);
       const t = todayResult.timings;

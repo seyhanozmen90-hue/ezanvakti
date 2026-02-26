@@ -139,7 +139,7 @@ export default async function CityPage({ params }: CityPageProps) {
   // 2) Secondary: Aladhan / mevcut sağlayıcı (Diyanet başarısızsa ve koordinat varsa)
   if (!todayTimes && hasCoordinates) {
     try {
-      const result = await getPrayerTimes({ city_slug: city.slug, date });
+      const result = await getPrayerTimes({ city_slug: city.slug, date, skipCache: true });
       todayTimes = {
         imsak: result.timings.fajr,
         gunes: result.timings.sunrise,

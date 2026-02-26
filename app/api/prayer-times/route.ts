@@ -50,7 +50,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Default to today in Europe/Istanbul timezone
-    const date = dateParam || getTodayInIstanbul();
+    const todayIstanbul = getTodayInIstanbul();
+    const date = dateParam || todayIstanbul;
 
     // Validate date format
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -60,11 +61,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Bugün için cache atla: İkindi Shafi (doğru değer) provider'dan alınsın
+    const skipCache = date === todayIstanbul;
+
     // Get prayer times from service (DB-backed with provider fallback)
     const result = await getPrayerTimes({
       city_slug: city,
       district_slug: district || undefined,
       date,
+      skipCache,
     });
 
     // Return with cache headers

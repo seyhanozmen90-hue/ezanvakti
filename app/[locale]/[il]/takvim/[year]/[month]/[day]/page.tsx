@@ -23,6 +23,8 @@ export default async function DayPage({ params }: PageProps) {
   const yesterday = new Date(date);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayString = yesterday.toISOString().split('T')[0];
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const dayData = getCalendarDay(dateString);
 
   let times: { imsak: string; gunes: string; ogle: string; ikindi: string; aksam: string; yatsi: string } | undefined;
@@ -33,7 +35,7 @@ export default async function DayPage({ params }: PageProps) {
   if (hasCoordsExist(city.slug)) {
     try {
       const [dayResult, prevResult] = await Promise.all([
-        getPrayerTimes({ city_slug: city.slug, date: dateString }),
+        getPrayerTimes({ city_slug: city.slug, date: dateString, skipCache: dateString === todayStr }),
         getPrayerTimes({ city_slug: city.slug, date: yesterdayString }),
       ]);
       const t = dayResult.timings;
