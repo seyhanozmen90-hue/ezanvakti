@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getTodayPrayerTimes, getMonthlyPrayerTimes, tryFetchPrayerTimesFromDiyanet } from '@/lib/api';
 import { getCityBySlug } from '@/lib/cities-helper';
@@ -13,7 +14,6 @@ import MonthlyTable from '@/components/MonthlyTable';
 import ThemeToggle from '@/components/ThemeToggle';
 import CitySelector from '@/components/CitySelector';
 import JsonLd from '@/components/JsonLd';
-import CityComingSoon from '@/components/CityComingSoon';
 import IftarCard from '@/components/IftarCard';
 import CitySEOContent from '@/components/CitySEOContent';
 import CityInternalLinks from '@/components/CityInternalLinks';
@@ -21,6 +21,8 @@ import { PrayerName, PrayerTime } from '@/lib/types';
 
 // ISR: ilk istekte server'da üretilir, 1 saat cache — build'de SSG yok (429 riski yok)
 export const revalidate = 3600;
+
+// Doğrulama: /tr/adapazari => 301/308 → /tr/sakarya/adapazari. /tr/sakarya/adapazari => 200, robots index,follow, canonical https://www.ezanvakti.site/tr/sakarya/adapazari. View Source'da noindex yok; X-Robots-Tag noindex yok.
 
 /**
  * Convert YYYY-MM-DD to DD.MM.YYYY for display
@@ -47,6 +49,9 @@ interface CityPageProps {
 }
 
 export async function generateMetadata({ params }: CityPageProps): Promise<Metadata> {
+  if (params.il === 'adapazari') {
+    return { title: 'Adapazarı Namaz Vakitleri | Ezan Vakti', robots: { index: false, follow: true } };
+  }
   const city = getCityBySlug(params.il);
   const sehirAdi = SEHIR_ADLARI[params.il] ?? city?.name ?? params.il;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
@@ -59,16 +64,11 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
   });
 
   if (!city) {
-    return {
-      title: `${sehirAdi} Namaz Vakitleri ${yil} | Ezan Vakitleri`,
-      description: 'Namaz vakitleri ve takvim bilgisi bu şehir için yakında eklenecek.',
-      robots: { index: false, follow: false },
-      alternates: { canonical: baseUrl },
-    };
+    notFound();
   }
 
   return {
-    title: `${sehirAdi} Namaz Vakitleri ${yil} | Günlük Ezan Saatleri`,
+    title: `${sehirAdi} Namaz Vakitleri ${yil} | Ezan Vakti`,
     description: `${sehirAdi} namaz vakitleri ${bugun}. Güncel imsak, güneş, öğle, ikindi, akşam, yatsı saatleri. ${sehirAdi} ${yil} imsakiye ve iftar vakitleri.`,
     keywords: [
       `${sehirAdi} namaz vakitleri`,
@@ -101,11 +101,14 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
 }
 
 export default async function CityPage({ params }: CityPageProps) {
+  // /tr/adapazari => 301/308 kalıcı yönlendirme → /tr/sakarya/adapazari (redirect sadece burada, server-side).
+  if (params.il === 'adapazari') {
+    permanentRedirect(`/${params.locale}/sakarya/adapazari`);
+  }
   const city = getCityBySlug(params.il);
 
-  // Şehir bulunamazsa "Yakında Eklenecek" sayfası göster
   if (!city) {
-    return <CityComingSoon requestedSlug={params.il} locale={params.locale} />;
+    notFound();
   }
 
   const t = await getTranslations({ locale: params.locale, namespace: 'site' });
@@ -217,7 +220,6 @@ export default async function CityPage({ params }: CityPageProps) {
 
   // JSON-LD Structured Data - Daha detaylı namaz vakitleri schema
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
-  const todayDateString = new Date().toISOString().split('T')[0];
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': ['WebSite', 'LocalBusiness'],
@@ -241,75 +243,6 @@ export default async function CityPage({ params }: CityPageProps) {
       name: `${city.name} Namaz Vakitleri - ${formatDate(currentDate)}`,
       description: `${city.name} için ${formatDate(currentDate)} tarihli günlük namaz vakitleri. Astronomik hesaplamalara göre belirlenmiştir.`,
       scheduleTimezone: 'Europe/Istanbul',
-      ...(todayTimes && {
-        event: [
-          {
-            '@type': 'Event',
-            name: 'İmsak Vakti',
-            description: `${city.name} İmsak vakti - Sabah namazı için hazırlık zamanı`,
-            startDate: `${todayDateString}T${todayTimes.imsak}:00+03:00`,
-            location: {
-              '@type': 'Place',
-              name: city.name,
-              address: {
-                '@type': 'PostalAddress',
-                addressCountry: 'TR',
-                addressLocality: city.name,
-              },
-            },
-          },
-          {
-            '@type': 'Event',
-            name: 'Güneş Doğuşu',
-            description: `${city.name} Güneş doğuşu vakti - Sabah namazının son zamanı`,
-            startDate: `${todayDateString}T${todayTimes.gunes}:00+03:00`,
-            location: {
-              '@type': 'Place',
-              name: city.name,
-            },
-          },
-          {
-            '@type': 'Event',
-            name: 'Öğle Namazı Vakti',
-            description: `${city.name} Öğle namazı vakti`,
-            startDate: `${todayDateString}T${todayTimes.ogle}:00+03:00`,
-            location: {
-              '@type': 'Place',
-              name: city.name,
-            },
-          },
-          {
-            '@type': 'Event',
-            name: 'İkindi Namazı Vakti',
-            description: `${city.name} İkindi namazı vakti`,
-            startDate: `${todayDateString}T${todayTimes.ikindi}:00+03:00`,
-            location: {
-              '@type': 'Place',
-              name: city.name,
-            },
-          },
-          {
-            '@type': 'Event',
-            name: 'Akşam Namazı Vakti (Ezan)',
-            description: `${city.name} Akşam ezanı ve namaz vakti`,
-            startDate: `${todayDateString}T${todayTimes.aksam}:00+03:00`,
-            location: {
-              '@type': 'Place',
-              name: city.name,
-            },
-          },
-          {
-            '@type': 'Event',
-            name: 'Yatsı Namazı Vakti',
-            description: `${city.name} Yatsı namazı vakti`,
-            startDate: `${todayDateString}T${todayTimes.yatsi}:00+03:00`,
-            location: {
-              '@type': 'Place',
-              name: city.name,
-            },
-          },
-        ],
-      }),
     },
     breadcrumb: {
       '@type': 'BreadcrumbList',

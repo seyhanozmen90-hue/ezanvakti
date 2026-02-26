@@ -304,7 +304,6 @@ const TURKEY_COORDINATES: LocationCoords[] = [
   { city_slug: 'bilecik', coords: { lat: 40.1503, lng: 29.9831 } },
   
   // Marmara Region
-  { city_slug: 'sakarya', coords: { lat: 40.7569, lng: 30.3783 } },
   { city_slug: 'tekirdag', coords: { lat: 40.9833, lng: 27.5167 } },
   { city_slug: 'edirne', coords: { lat: 41.6771, lng: 26.5557 } },
   { city_slug: 'kirklareli', coords: { lat: 41.7333, lng: 27.2167 } },

@@ -1,10 +1,10 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getTodayPrayerTimes, getMonthlyPrayerTimes, tryFetchPrayerTimesFromDiyanet } from '@/lib/api';
 import { getDistrictBySlug, getAllCityDistrictCombinations, getCityBySlug } from '@/lib/cities-helper';
 import { getNextPrayerTime, formatDate, formatHijriDate, isRamadan } from '@/lib/utils';
-import { isDistrictIndexed } from '@/lib/seo.config';
 import { getPrayerTimes } from '@/lib/services/prayerTimesService';
 import { hasCoordsExist } from '@/lib/geo/tr';
 import CountdownTimer from '@/components/CountdownTimer';
@@ -13,7 +13,6 @@ import MonthlyTable from '@/components/MonthlyTable';
 import ThemeToggle from '@/components/ThemeToggle';
 import CitySelector from '@/components/CitySelector';
 import JsonLd from '@/components/JsonLd';
-import CityComingSoon from '@/components/CityComingSoon';
 import IftarCard from '@/components/IftarCard';
 import { PrayerName, PrayerTime } from '@/lib/types';
 
@@ -38,43 +37,13 @@ interface DistrictPageProps {
 
 export async function generateMetadata({ params }: DistrictPageProps): Promise<Metadata> {
   const result = getDistrictBySlug(params.il, params.ilce);
-  
+
   if (!result) {
-    // Tanımsız ilçe için SEO metadata
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
-    return {
-      title: 'Bu İlçe Yakında Eklenecek | Ezan Vakitleri',
-      description: 'Namaz vakitleri ve takvim bilgileri bu ilçe için henüz yayında değil. Veriler kademeli olarak eklenmektedir.',
-      robots: {
-        index: false,
-        follow: false,
-        googleBot: {
-          index: false,
-          follow: false,
-        },
-      },
-      alternates: {
-        canonical: baseUrl,
-      },
-    };
+    notFound();
   }
 
   const { city, district } = result;
-  const tSeo = await getTranslations({ locale: params.locale, namespace: 'seo' });
   const todayTimes = await getTodayPrayerTimes(city.id, district.id);
-  
-  const title = tSeo('districtTitle', { city: city.name, district: district.name });
-  const description = todayTimes
-    ? tSeo('districtDescription', {
-        city: city.name,
-        district: district.name,
-        imsak: todayTimes.imsak,
-        ogle: todayTimes.ogle,
-        ikindi: todayTimes.ikindi,
-        aksam: todayTimes.aksam,
-        yatsi: todayTimes.yatsi,
-      })
-    : tSeo('defaultDescription', { location: `${city.name} ${district.name}` });
 
   const keywords = [
     `${city.name} ${district.name} ezan vakitleri`,
@@ -92,11 +61,8 @@ export async function generateMetadata({ params }: DistrictPageProps): Promise<M
   const url = `${baseUrl}/tr/${city.slug}/${district.slug}`;
   const currentYear = new Date().getFullYear();
 
-  // SEO Config: İlçenin index edilip edilmeyeceğini kontrol et
-  const shouldIndex = isDistrictIndexed(city.slug, district.slug);
-
   return {
-    title: `${city.name} ${district.name} Namaz Vakitleri ${currentYear}`,
+    title: `${city.name} ${district.name} Namaz Vakitleri ${currentYear} | Ezan Vakti`,
     description: `${city.name} ${district.name} namaz vakitleri ${currentYear}. Güncel imsak, öğle, ikindi, akşam, yatsı saatleri. ${district.name} ilçesi için ezan vakitleri ve aylık takvim.`,
     keywords: keywords.join(', '),
     authors: [{ name: 'Ezan Vakitleri' }],
@@ -127,12 +93,11 @@ export async function generateMetadata({ params }: DistrictPageProps): Promise<M
       description: `${city.name} ${district.name} için güncel namaz vakitleri`,
       images: [`${baseUrl}/icon-512x512.png`],
     },
-    // NOINDEX kontrolü: seo.config.ts'deki ayara göre
     robots: {
-      index: shouldIndex, // false ise NOINDEX
-      follow: true, // Her zaman follow
+      index: true,
+      follow: true,
       googleBot: {
-        index: shouldIndex,
+        index: true,
         follow: true,
         'max-video-preview': -1,
         'max-image-preview': 'large',
@@ -145,17 +110,8 @@ export async function generateMetadata({ params }: DistrictPageProps): Promise<M
 export default async function DistrictPage({ params }: DistrictPageProps) {
   const result = getDistrictBySlug(params.il, params.ilce);
 
-  // İlçe bulunamazsa "Yakında Eklenecek" sayfası göster
   if (!result) {
-    const city = getCityBySlug(params.il);
-    return (
-      <CityComingSoon 
-        requestedSlug={params.ilce} 
-        locale={params.locale}
-        type="district"
-        cityName={city?.name}
-      />
-    );
+    notFound();
   }
 
   const { city, district } = result;
@@ -277,82 +233,37 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
   // Ramazan ayı kontrolü
   const isRamadanMonth = isRamadan(todayTimes.hijriDate);
 
-  // JSON-LD Structured Data (Google için)
+  // JSON-LD: WebPage + BreadcrumbList (Event schema kaldırıldı — GSC Rich Results hatası önlemi)
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.ezanvakti.site';
-  const jsonLd = {
+  const districtPageUrl = `${baseUrl}/tr/${city.slug}/${district.slug}`;
+  const pageJsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'WebPage',
-    name: `${city.name} ${district.name} Ezan Vakitleri`,
-    description: `${city.name} ${district.name} için güncel namaz vakitleri ve ezan saatleri`,
-    url: `${baseUrl}/tr/${city.slug}/${district.slug}`,
-    mainEntity: {
-      '@type': 'Schedule',
-      name: `${city.name} ${district.name} Namaz Vakitleri`,
-      description: `${city.name} ${district.name} için günlük namaz vakitleri cetveli`,
-      scheduleTimezone: 'Europe/Istanbul',
-      ...(todayTimes && {
-        event: [
-          {
-            '@type': 'Event',
-            name: 'İmsak',
-            startDate: `${new Date().toISOString().split('T')[0]}T${todayTimes.imsak}:00+03:00`,
-          },
-          {
-            '@type': 'Event',
-            name: 'Güneş',
-            startDate: `${new Date().toISOString().split('T')[0]}T${todayTimes.gunes}:00+03:00`,
-          },
-          {
-            '@type': 'Event',
-            name: 'Öğle',
-            startDate: `${new Date().toISOString().split('T')[0]}T${todayTimes.ogle}:00+03:00`,
-          },
-          {
-            '@type': 'Event',
-            name: 'İkindi',
-            startDate: `${new Date().toISOString().split('T')[0]}T${todayTimes.ikindi}:00+03:00`,
-          },
-          {
-            '@type': 'Event',
-            name: 'Akşam',
-            startDate: `${new Date().toISOString().split('T')[0]}T${todayTimes.aksam}:00+03:00`,
-          },
-          {
-            '@type': 'Event',
-            name: 'Yatsı',
-            startDate: `${new Date().toISOString().split('T')[0]}T${todayTimes.yatsi}:00+03:00`,
-          },
+    '@graph': [
+      {
+        '@type': 'WebPage',
+        name: `${city.name} ${district.name} Namaz Vakitleri`,
+        description: `${city.name} ${district.name} için güncel namaz vakitleri ve ezan saatleri. İmsak, öğle, ikindi, akşam, yatsı.`,
+        url: districtPageUrl,
+        isPartOf: {
+          '@type': 'WebSite',
+          name: 'ezanvakti.site',
+          url: baseUrl,
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Ana Sayfa', item: `${baseUrl}/tr` },
+          { '@type': 'ListItem', position: 2, name: city.name, item: `${baseUrl}/tr/${city.slug}` },
+          { '@type': 'ListItem', position: 3, name: district.name, item: districtPageUrl },
         ],
-      }),
-    },
-    breadcrumb: {
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        {
-          '@type': 'ListItem',
-          position: 1,
-          name: 'Ana Sayfa',
-          item: `${baseUrl}/tr`,
-        },
-        {
-          '@type': 'ListItem',
-          position: 2,
-          name: city.name,
-          item: `${baseUrl}/tr/${city.slug}`,
-        },
-        {
-          '@type': 'ListItem',
-          position: 3,
-          name: district.name,
-          item: `${baseUrl}/tr/${city.slug}/${district.slug}`,
-        },
-      ],
-    },
+      },
+    ],
   };
 
   return (
     <>
-      <JsonLd data={jsonLd} />
+      <JsonLd data={pageJsonLd} />
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-navy-darkest dark:via-navy-darker dark:to-navy-dark">
         <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-10 max-w-7xl">
           {/* SEO H1 + Location & Date */}
