@@ -43,12 +43,12 @@ export class AladhanProvider implements PrayerTimesProvider {
       const timestamp = Math.floor(new Date(`${date}T12:00:00`).getTime() / 1000);
 
       // Build URL with params
-      // method=13 (Turkey Diyanet), school=1 (Hanafi)
+      // method=13 (Turkey Diyanet), school=0 (Shafi: Diyanet ikindi = gölge 1x, Hanafi=1 ise ~1 saat sonra)
       const url = new URL(`${ALADHAN_API_URL}/${timestamp}`);
       url.searchParams.set('latitude', coords.lat.toString());
       url.searchParams.set('longitude', coords.lng.toString());
       url.searchParams.set('method', '13'); // Turkey Diyanet
-      url.searchParams.set('school', '1'); // Hanafi
+      url.searchParams.set('school', '0'); // Shafi / standart (Diyanet ikindi vakti buna uygun)
       url.searchParams.set('timezonestring', timezone);
 
       // Fetch with timeout

@@ -38,11 +38,11 @@ function kiblaHesapla(lat: number, lng: number): number {
 }
 
 /**
- * Kıble açısı sola düzeltme (derece). Formül standart büyük daire kerterizi; bu değer
- * manyetik sapma / cihaz farkı için. Gerçek kıbleye göre saha doğrulanmış: toplam ~159°.
- * Din hassas konu; değer dikkatle güncellenmeli.
+ * Türkiye için manyetik sapma (magnetic declination): manyetik kuzey, coğrafi kuzeyin ~6° doğusunda.
+ * Kerteriz coğrafi (true) hesaplanıyor; pusula manyetik gösterdiği için bu kadar çıkarıyoruz.
+ * Kaynak: standart büyük daire + Türkiye ortalama sapma.
  */
-const KIBLE_SOLA_DUZELTME = 159;
+const TURKEY_MAGNETIC_DECLINATION = 6;
 
 /** Haversine → Kabe'ye km */
 function mesafeHesapla(lat: number, lng: number): number {
@@ -108,6 +108,7 @@ export default function KiblePusulasi() {
   const kadranRef = useRef<IbreRefObj>({ current: 0, rafId: null });
   const kiblaRef = useRef<number | null>(null);
   const temizleyici = useRef<(() => void) | null>(null);
+  const sensorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Kıble açısı sadece konum alındığında set edilir; sensör handler sadece okur, asla değiştirmez */
   kiblaRef.current = kiblaAcisi;
 
@@ -169,10 +170,33 @@ export default function KiblePusulasi() {
       return;
     }
 
+    let eventReceived = false;
+    const handlerWithCheck = (e: DeviceOrientationEventWithCompass) => {
+      const hasValue =
+        (typeof (e as DeviceOrientationEventWithCompass).webkitCompassHeading === 'number' && (e as DeviceOrientationEventWithCompass).webkitCompassHeading >= 0) ||
+        (e.alpha !== null && e.alpha !== undefined);
+      if (hasValue) {
+        eventReceived = true;
+        if (sensorTimeoutRef.current) {
+          clearTimeout(sensorTimeoutRef.current);
+          sensorTimeoutRef.current = null;
+        }
+      }
+      sensorHandler(e);
+    };
+
+    const removeListener = () =>
+      window.removeEventListener('deviceorientation', handlerWithCheck, true);
+
     const baslat = () => {
-      window.addEventListener('deviceorientation', sensorHandler, true);
-      temizleyici.current = () =>
-        window.removeEventListener('deviceorientation', sensorHandler, true);
+      window.addEventListener('deviceorientation', handlerWithCheck, true);
+      temizleyici.current = () => {
+        if (sensorTimeoutRef.current) {
+          clearTimeout(sensorTimeoutRef.current);
+          sensorTimeoutRef.current = null;
+        }
+        removeListener();
+      };
     };
 
     const DOE = DeviceOrientationEvent as DeviceOrientationEventWithPermission;
@@ -183,16 +207,24 @@ export default function KiblePusulasi() {
           baslat();
         } else {
           setSensorVar(false);
+          return;
         }
       } catch {
         setSensorVar(false);
+        return;
       }
     } else {
       baslat();
     }
+
+    // Cihazdan veri gelmezse 2.5 s sonra statik moda geç (farklı telefonlarda sensör bazen çalışmıyor)
+    sensorTimeoutRef.current = setTimeout(() => {
+      sensorTimeoutRef.current = null;
+      if (!eventReceived) setSensorVar(false);
+    }, 2500);
   }, [sensorHandler]);
 
-  const konumAl = useCallback(() => {
+  const konumAl = useCallback(async () => {
     setDurum('yukleniyor');
     setHata('');
 
@@ -202,11 +234,21 @@ export default function KiblePusulasi() {
       return;
     }
 
+    // iOS: Pusula izni aynı dokunuşta istenmeli (async sonra kabul edilmiyor)
+    const DOE = DeviceOrientationEvent as DeviceOrientationEventWithPermission;
+    if (typeof DOE?.requestPermission === 'function') {
+      try {
+        await DOE.requestPermission();
+      } catch {
+        // İzin reddedilirse de konumla devam et, statik açı gösterilir
+      }
+    }
+
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
         const kiblaHam = kiblaHesapla(lat, lng);
-        const kibla = (kiblaHam - KIBLE_SOLA_DUZELTME + 360) % 360;
+        const kibla = (kiblaHam - TURKEY_MAGNETIC_DECLINATION + 360) % 360;
         setKonum({ lat, lng });
         setKiblaAcisi(kibla);
         setMesafe(mesafeHesapla(lat, lng));
@@ -229,6 +271,7 @@ export default function KiblePusulasi() {
   useEffect(() => {
     return () => {
       temizleyici.current?.();
+      if (sensorTimeoutRef.current) clearTimeout(sensorTimeoutRef.current);
       if (kadranRef.current.rafId) cancelAnimationFrame(kadranRef.current.rafId);
     };
   }, []);
@@ -452,13 +495,26 @@ export default function KiblePusulasi() {
           </div>
 
           {!sensorVar && kiblaAcisi != null && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4">
-              <p className="text-amber-400 text-sm text-center font-medium mb-1">
-                🧭 Cihazınızda pusula sensörü yok veya erişilemiyor
-              </p>
-              <p className="text-amber-300/90 text-xs text-center">
-                Kıble yönünüz <strong>{Math.round(kiblaAcisi)}°</strong> (kuzeyden saat yönünde). Bu açıyı fiziksel bir pusula veya güneşin konumuyla karşılaştırarak yönü bulabilirsiniz.
-              </p>
+            <div className="space-y-3">
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4">
+                <p className="text-amber-400 text-sm text-center font-medium mb-1">
+                  🧭 Cihazınızda pusula sensörü yok veya erişilemiyor
+                </p>
+                <p className="text-amber-300/90 text-xs text-center">
+                  Kıble yönünüz <strong>{Math.round(kiblaAcisi)}°</strong> (kuzeyden saat yönünde). Bu açıyı fiziksel bir pusula veya güneşin konumuyla karşılaştırarak yönü bulabilirsiniz.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  temizleyici.current?.();
+                  setSensorVar(true);
+                  await sensorBaslat();
+                }}
+                className="w-full bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 text-sky-300 text-sm font-medium py-3 rounded-2xl transition-all"
+              >
+                🧭 Pusulayı tekrar dene
+              </button>
             </div>
           )}
 

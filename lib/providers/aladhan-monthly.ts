@@ -198,8 +198,8 @@ export async function fetchMonthlyPrayerTimes(
 ): Promise<MonthlyDayData[]> {
   const cityName = toAladhanCityName(city_slug);
   
-  // Build URL: /calendarByCity/{year}/{month}?city={cityName}&country=Turkey&method=13
-  const url = `${ALADHAN_CALENDAR_API}/${year}/${month}?city=${encodeURIComponent(cityName)}&country=Turkey&method=13`;
+  // Build URL: method=13 (Turkey), school=0 (Shafi = Diyanet ikindi vakti)
+  const url = `${ALADHAN_CALENDAR_API}/${year}/${month}?city=${encodeURIComponent(cityName)}&country=Turkey&method=13&school=0`;
   
   console.log(`📅 Fetching monthly prayer times: ${city_slug} (${cityName}) - ${year}/${month}`);
   
