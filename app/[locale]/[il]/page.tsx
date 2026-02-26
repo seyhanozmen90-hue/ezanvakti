@@ -28,6 +28,15 @@ function formatDateForDisplay(isoDate: string): string {
   return `${day}.${month}.${year}`;
 }
 
+/** DD.MM.YYYY veya YYYY-MM-DD → YYYY-MM-DD (Diyanet tarih eşlemesi) */
+function toISOKey(d: string): string {
+  if (d.includes('-') && d.length === 10) return d;
+  const parts = d.split('.');
+  if (parts.length === 3)
+    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+  return d;
+}
+
 interface CityPageProps {
   params: {
     locale: string;
@@ -122,7 +131,11 @@ export default async function CityPage({ params }: CityPageProps) {
   // 1) Primary: Diyanet API (çalışıyorsa)
   const diyanetMonthly = await tryFetchPrayerTimesFromDiyanet(city.id);
   if (diyanetMonthly && diyanetMonthly.length > 0) {
-    const found = diyanetMonthly.find((t) => t.date === todayStr) || diyanetMonthly[0];
+    const todayKey = toISOKey(date);
+    const found =
+      diyanetMonthly.find((t) => toISOKey(t.date) === todayKey) ||
+      diyanetMonthly.find((t) => t.date === todayStr) ||
+      diyanetMonthly[0];
     todayTimes = {
       ...found,
       date: formatDateForDisplay(date),

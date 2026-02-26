@@ -317,13 +317,14 @@ export default function KiblePusulasi() {
           <div className="text-6xl">🕋</div>
           <div>
             <p className="text-white font-semibold">Kıble Yönünü Bul</p>
-            <p className="text-slate-400 text-sm mt-1">GPS konumunuza erişim gereklidir</p>
+            <p className="text-slate-400 text-sm mt-2">Kıble açısı konumunuza göre hesaplanır. Konum iznini açmanız gerekir.</p>
+            <p className="text-slate-500 text-xs mt-1">Butona tıklayın; tarayıcı konum izni isteyecektir. İzin verin veya cihaz ayarlarından konumu açın.</p>
           </div>
           <button
             onClick={konumAl}
             className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition-all text-white font-bold py-4 rounded-2xl shadow-xl shadow-emerald-500/30 text-lg"
           >
-            📍 Başla
+            📍 Konum iznini ver ve başla
           </button>
         </div>
       )}
@@ -344,16 +345,37 @@ export default function KiblePusulasi() {
         <div className="w-full max-w-xs bg-red-500/10 border border-red-500/30 rounded-3xl p-7 text-center space-y-4">
           <div className="text-4xl">⚠️</div>
           <p className="text-red-300 text-sm">{hata}</p>
+          <p className="text-slate-400 text-xs">Cihaz ayarlarında konum servisini açtıysanız aşağıdaki butonla tekrar izin isteyin.</p>
+          <button
+            onClick={konumAl}
+            className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3 rounded-2xl transition-all"
+          >
+            📍 Konum iznini ver
+          </button>
           <button
             onClick={() => setDurum('bekliyor')}
-            className="w-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 font-medium py-3 rounded-2xl transition-all"
+            className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 text-sm py-2 rounded-2xl transition-all"
           >
-            Tekrar Dene
+            Geri dön
           </button>
         </div>
       )}
 
-      {durum === 'aktif' && (
+      {durum === 'aktif' && !konum && (
+        <div className="w-full max-w-xs bg-amber-500/10 border border-amber-500/30 rounded-3xl p-7 text-center space-y-4">
+          <div className="text-4xl">📍</div>
+          <p className="text-amber-200 font-medium">Konum alınamadı</p>
+          <p className="text-slate-400 text-sm">Kıble yönü konumunuza göre hesaplanır. Konum iznini verin veya cihaz ayarlarından konumu açın.</p>
+          <button
+            onClick={konumAl}
+            className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-4 rounded-2xl transition-all"
+          >
+            Konum iznini ver
+          </button>
+        </div>
+      )}
+
+      {durum === 'aktif' && konum && (
         <div className="w-full max-w-sm space-y-4">
           <div
             className={`
@@ -490,8 +512,8 @@ export default function KiblePusulasi() {
               <div className="text-slate-500 text-xs mt-1">Kabe&apos;ye Mesafe</div>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-              <div className="text-slate-300 text-xs font-mono">{konum?.lat.toFixed(4)}°K</div>
-              <div className="text-slate-300 text-xs font-mono">{konum?.lng.toFixed(4)}°D</div>
+              <div className="text-slate-300 text-xs font-mono">{konum.lat.toFixed(4)}°K</div>
+              <div className="text-slate-300 text-xs font-mono">{konum.lng.toFixed(4)}°D</div>
               <div className="text-slate-500 text-xs mt-1">Konumunuz</div>
             </div>
           </div>

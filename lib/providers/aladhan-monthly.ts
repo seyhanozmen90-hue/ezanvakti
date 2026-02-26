@@ -110,6 +110,15 @@ function stripTimezone(time: string): string {
   return time.replace(/\s*\([^)]+\)/, '').trim();
 }
 
+/** HH:MM formatına dakika ekle (Diyanet uyumu: İkindi +3 dk) */
+function addMinutesToTime(timeStr: string, minutes: number): string {
+  const [h, m] = timeStr.split(':').map(Number);
+  const total = (h * 60 + m + minutes + 24 * 60) % (24 * 60);
+  const nh = Math.floor(total / 60);
+  const nm = total % 60;
+  return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`;
+}
+
 /**
  * Convert Aladhan date format to ISO format
  * Example: "01-02-2026" → "2026-02-01"
@@ -231,13 +240,14 @@ export async function fetchMonthlyPrayerTimes(
     console.log(`✅ Received ${json.data.length} days from Aladhan for ${cityName}`);
     
     // Map to our format with Hijri dates
+    const asrOffset = 3; // Diyanet uyumu: takvim API tune desteklemiyorsa İkindi +3 dk
     return json.data.map((day) => ({
       date: parseAladhanDate(day.date.gregorian.date),
       timings: {
         fajr: stripTimezone(day.timings.Fajr),
         sunrise: stripTimezone(day.timings.Sunrise),
         dhuhr: stripTimezone(day.timings.Dhuhr),
-        asr: stripTimezone(day.timings.Asr),
+        asr: addMinutesToTime(stripTimezone(day.timings.Asr), asrOffset),
         maghrib: stripTimezone(day.timings.Maghrib),
         isha: stripTimezone(day.timings.Isha),
       },

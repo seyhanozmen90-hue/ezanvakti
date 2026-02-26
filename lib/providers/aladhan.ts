@@ -76,15 +76,20 @@ export class AladhanProvider implements PrayerTimesProvider {
 
       // Normalize timings to HH:MM format
       const normalize = (time: string): string => {
-        // Remove timezone suffix if present (e.g., "05:30 (+03:00)")
         return time.split(' ')[0];
       };
+      const addMinutes = (hhmm: string, min: number): string => {
+        const [h, m] = hhmm.split(':').map(Number);
+        const total = (h * 60 + m + min + 24 * 60) % (24 * 60);
+        return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+      };
 
+      const asrRaw = normalize(data.data.timings.Asr);
       const timings: ProviderTimings = {
         fajr: normalize(data.data.timings.Fajr),
         sunrise: normalize(data.data.timings.Sunrise),
         dhuhr: normalize(data.data.timings.Dhuhr),
-        asr: normalize(data.data.timings.Asr),
+        asr: addMinutes(asrRaw, 3), // Diyanet uyumu: İkindi +3 dk (tune API'de uygulanmazsa yine doğru)
         maghrib: normalize(data.data.timings.Maghrib),
         isha: normalize(data.data.timings.Isha),
       };
