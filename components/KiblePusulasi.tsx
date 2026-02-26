@@ -172,9 +172,11 @@ export default function KiblePusulasi() {
 
     let eventReceived = false;
     const handlerWithCheck = (e: DeviceOrientationEventWithCompass) => {
+      const webkit = e?.webkitCompassHeading;
+      const alpha = e?.alpha;
       const hasValue =
-        (typeof (e as DeviceOrientationEventWithCompass).webkitCompassHeading === 'number' && (e as DeviceOrientationEventWithCompass).webkitCompassHeading >= 0) ||
-        (e.alpha !== null && e.alpha !== undefined);
+        (typeof webkit === 'number' && webkit >= 0) ||
+        (alpha !== null && alpha !== undefined);
       if (hasValue) {
         eventReceived = true;
         if (sensorTimeoutRef.current) {
