@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getTodayPrayerTimes, getMonthlyPrayerTimes, tryFetchPrayerTimesFromDiyanet } from '@/lib/api';
 import { getDistrictBySlug, getAllCityDistrictCombinations, getCityBySlug } from '@/lib/cities-helper';
@@ -108,6 +108,9 @@ export async function generateMetadata({ params }: DistrictPageProps): Promise<M
 }
 
 export default async function DistrictPage({ params }: DistrictPageProps) {
+  if (params.il === 'adapazari') {
+    permanentRedirect(`/${params.locale}/sakarya/adapazari`);
+  }
   const result = getDistrictBySlug(params.il, params.ilce);
 
   if (!result) {
