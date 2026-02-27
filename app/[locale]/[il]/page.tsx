@@ -341,26 +341,27 @@ export default async function CityPage({ params }: CityPageProps) {
       {faqSchema && <JsonLd data={faqSchema} />}
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-navy-darkest dark:via-navy-darker dark:to-navy-dark">
         <div className="container mx-auto px-4 sm:px-6 py-6 max-w-6xl">
+          {/* SSR: Namaz vakitleri doğrudan sunucu bileşeninde düz HTML (view-source'ta "İmsak:" metni bulunur) */}
+          <section className="sr-only" aria-label="Namaz vakitleri">
+            <h2>{city.name} Namaz Vakitleri</h2>
+            <ul>
+              <li>İmsak: {todayTimes.imsak}</li>
+              <li>Güneş: {todayTimes.gunes}</li>
+              <li>Öğle: {todayTimes.ogle}</li>
+              <li>İkindi: {todayTimes.ikindi}</li>
+              <li>Akşam: {todayTimes.aksam}</li>
+              <li>Yatsı: {todayTimes.yatsi}</li>
+            </ul>
+          </section>
+
           {/* SEO H1 + Location & Date */}
           <header className="mb-5">
-            {/* SEO H1 - Görünür başlık */}
             <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold leading-tight text-navy-900 dark:text-white mb-2 text-center">
               {city.name} Namaz Vakitleri – {formatDate(currentDate)}
             </h1>
             <p className="text-center text-navy-700 dark:text-gold-300/80 text-xs sm:text-sm mb-4">
               ℹ️ Namaz vakitleri, hesaplama yöntemlerine bağlı olarak birkaç dakikalık farklılık gösterebilir.
             </p>
-
-            {/* SEO: Düz metin namaz vakitleri ilk HTML'de (view-source); sr-only ile görünmez, display:none yok */}
-            <section className="sr-only" aria-label="Namaz vakitleri SEO içeriği">
-              <h2>{city.name} Namaz Vakitleri</h2>
-              <p>İmsak: {todayTimes.imsak}</p>
-              <p>Güneş: {todayTimes.gunes}</p>
-              <p>Öğle: {todayTimes.ogle}</p>
-              <p>İkindi: {todayTimes.ikindi}</p>
-              <p>Akşam: {todayTimes.aksam}</p>
-              <p>Yatsı: {todayTimes.yatsi}</p>
-            </section>
 
             {/* Location & Date Card */}
             <div className="bg-white dark:bg-gradient-to-br dark:from-navy-dark/90 dark:to-navy-darker/90 backdrop-blur-md rounded-xl shadow-lg dark:shadow-xl p-4 sm:p-5 border border-gold-500 dark:border-gold-500/30">
