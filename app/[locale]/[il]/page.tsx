@@ -124,7 +124,6 @@ export default async function CityPage({ params }: CityPageProps) {
 
   const t = await getTranslations({ locale: params.locale, namespace: 'site' });
   const tPrayer = await getTranslations({ locale: params.locale, namespace: 'prayer' });
-  const tPrayers = await getTranslations({ locale: params.locale, namespace: 'prayers' });
   const tStatus = await getTranslations({ locale: params.locale, namespace: 'status' });
   const tLocation = await getTranslations({ locale: params.locale, namespace: 'location' });
   const tFooter = await getTranslations({ locale: params.locale, namespace: 'footer' });
@@ -352,17 +351,15 @@ export default async function CityPage({ params }: CityPageProps) {
               ℹ️ Namaz vakitleri, hesaplama yöntemlerine bağlı olarak birkaç dakikalık farklılık gösterebilir.
             </p>
 
-            {/* SEO-only: Namaz vakitleri ilk HTML'de düz metin (view-source için), görünmez; tek görünen yer aşağıdaki kartlar */}
-            <section aria-label={tPrayer('todaysPrayersWithCity', { city: city.name })} className="sr-only">
-              <h2>{tPrayer('todaysPrayersWithCity', { city: city.name })}</h2>
-              <ul className="list-none">
-                <li>{tPrayers('imsak')}: {todayTimes.imsak}</li>
-                <li>{tPrayers('gunes')}: {todayTimes.gunes}</li>
-                <li>{tPrayers('ogle')}: {todayTimes.ogle}</li>
-                <li>{tPrayers('ikindi')}: {todayTimes.ikindi}</li>
-                <li>{tPrayers('aksam')}: {todayTimes.aksam}</li>
-                <li>{tPrayers('yatsi')}: {todayTimes.yatsi}</li>
-              </ul>
+            {/* SEO: Düz metin namaz vakitleri ilk HTML'de (view-source); sr-only ile görünmez, display:none yok */}
+            <section className="sr-only" aria-label="Namaz vakitleri SEO içeriği">
+              <h2>{city.name} Namaz Vakitleri</h2>
+              <p>İmsak: {todayTimes.imsak}</p>
+              <p>Güneş: {todayTimes.gunes}</p>
+              <p>Öğle: {todayTimes.ogle}</p>
+              <p>İkindi: {todayTimes.ikindi}</p>
+              <p>Akşam: {todayTimes.aksam}</p>
+              <p>Yatsı: {todayTimes.yatsi}</p>
             </section>
 
             {/* Location & Date Card */}
