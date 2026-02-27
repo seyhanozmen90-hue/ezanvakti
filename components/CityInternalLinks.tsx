@@ -6,20 +6,18 @@
 import { getCityBySlug } from '@/lib/cities-helper';
 import type { City } from '@/lib/types';
 
-/** Popüler il slug'ları (mevcut şehir çıkarıldıktan sonra 10 link kalacak şekilde) */
+/** Popüler Şehirler: 10 il (Istanbul, Ankara, Izmir, Bursa, Konya, Antalya, Adana, Gaziantep, Kayseri, Mersin) */
 const POPULAR_CITY_SLUGS = [
   'istanbul',
   'ankara',
   'izmir',
   'bursa',
+  'konya',
   'antalya',
   'adana',
-  'konya',
   'gaziantep',
-  'mersin',
   'kayseri',
-  'eskisehir',
-  'diyarbakir',
+  'mersin',
 ];
 
 interface CityInternalLinksProps {
@@ -30,8 +28,7 @@ interface CityInternalLinksProps {
 export default function CityInternalLinks({ locale, currentCity }: CityInternalLinksProps) {
   const base = `/${locale}`;
   const citiesToShow = POPULAR_CITY_SLUGS.map((slug) => getCityBySlug(slug))
-    .filter((c): c is City => !!c && c.slug !== currentCity.slug)
-    .slice(0, 10);
+    .filter((c): c is City => !!c && c.slug !== currentCity.slug);
   const districts = currentCity.districts || [];
 
   return (
@@ -40,7 +37,7 @@ export default function CityInternalLinks({ locale, currentCity }: CityInternalL
       aria-label="İç linkler"
     >
       <h2 className="text-lg font-bold text-navy-900 dark:text-white mb-3">
-        Popüler iller
+        Popüler Şehirler
       </h2>
       <p className="mb-3 text-navy-700 dark:text-gold-300/80">
         Namaz vakitleri sayfaları:{' '}

@@ -62,13 +62,19 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
     month: 'long',
     year: 'numeric',
   });
+  const dateWithDayName = new Date().toLocaleDateString('tr-TR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    weekday: 'long',
+  });
 
   if (!city) {
     notFound();
   }
 
   return {
-    title: `${sehirAdi} Namaz Vakitleri ${yil} | Ezan Vakti`,
+    title: `${sehirAdi} Namaz Vakitleri – ${dateWithDayName}`,
     description: `${sehirAdi} namaz vakitleri ${bugun}. Güncel imsak, güneş, öğle, ikindi, akşam, yatsı saatleri. ${sehirAdi} ${yil} imsakiye ve iftar vakitleri.`,
     keywords: [
       `${sehirAdi} namaz vakitleri`,
@@ -87,13 +93,13 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
       type: 'website',
       locale: params.locale === 'tr' ? 'tr_TR' : params.locale,
       url,
-      title: `${sehirAdi} Namaz Vakitleri ${yil}`,
+      title: `${sehirAdi} Namaz Vakitleri – ${dateWithDayName}`,
       description: `${sehirAdi} için güncel ezan ve namaz vakitleri. İmsakiye, iftar saati.`,
       siteName: 'EzanVakti.site',
     },
     twitter: {
       card: 'summary',
-      title: `${sehirAdi} Namaz Vakitleri ${yil}`,
+      title: `${sehirAdi} Namaz Vakitleri – ${dateWithDayName}`,
       description: `${sehirAdi} için güncel ezan ve namaz vakitleri. İmsakiye, iftar saati.`,
     },
     robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large' } },
@@ -346,10 +352,10 @@ export default async function CityPage({ params }: CityPageProps) {
               ℹ️ Namaz vakitleri, hesaplama yöntemlerine bağlı olarak birkaç dakikalık farklılık gösterebilir.
             </p>
 
-            {/* SEO: Namaz vakitleri ilk HTML yanıtında düz metin (Google indekslemesi için) */}
-            <section aria-label={tPrayer('todaysPrayersWithCity', { city: city.name })} className="mb-5">
-              <h2 className="sr-only">{tPrayer('todaysPrayersWithCity', { city: city.name })}</h2>
-              <ul className="list-none text-center space-y-1 text-navy-900 dark:text-gold-300/90 font-medium">
+            {/* SEO-only: Namaz vakitleri ilk HTML'de düz metin (view-source için), görünmez; tek görünen yer aşağıdaki kartlar */}
+            <section aria-label={tPrayer('todaysPrayersWithCity', { city: city.name })} className="sr-only">
+              <h2>{tPrayer('todaysPrayersWithCity', { city: city.name })}</h2>
+              <ul className="list-none">
                 <li>{tPrayers('imsak')}: {todayTimes.imsak}</li>
                 <li>{tPrayers('gunes')}: {todayTimes.gunes}</li>
                 <li>{tPrayers('ogle')}: {todayTimes.ogle}</li>
