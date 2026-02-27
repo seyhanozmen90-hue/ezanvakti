@@ -219,6 +219,7 @@ export default async function CityPage({ params }: CityPageProps) {
   }
 
   if (!todayTimes) {
+    console.error('[CityPage] VAKITLER YOK:', params.il);
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -233,6 +234,7 @@ export default async function CityPage({ params }: CityPageProps) {
     );
   }
 
+  console.log('[CityPage] VAKITLER:', JSON.stringify({ il: params.il, imsak: todayTimes.imsak, ogle: todayTimes.ogle, aksam: todayTimes.aksam }));
   const nextPrayer = getNextPrayerTime(todayTimes);
   const currentDate = new Date();
   
@@ -351,7 +353,7 @@ export default async function CityPage({ params }: CityPageProps) {
       {faqSchema && <JsonLd data={faqSchema} />}
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-navy-darkest dark:via-navy-darker dark:to-navy-dark">
         <div className="container mx-auto px-4 sm:px-6 py-6 max-w-6xl">
-          {/* SSR: Namaz vakitleri doğrudan sunucu bileşeninde düz HTML (view-source'ta "İmsak:" metni bulunur) */}
+          {/* SSR: Namaz vakitleri ilk HTML'de düz metin (view-source); loading.tsx kaldırıldığı için artık ilk yanıtta gelir */}
           <section className="sr-only" aria-label="Namaz vakitleri">
             <h2>{city.name} Namaz Vakitleri</h2>
             <ul>
