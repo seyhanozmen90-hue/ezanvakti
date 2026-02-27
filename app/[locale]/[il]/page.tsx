@@ -20,10 +20,11 @@ import CityInternalLinks from '@/components/CityInternalLinks';
 import { PrayerName, PrayerTime } from '@/lib/types';
 import { locales } from '@/i18n';
 
-// ISR: sayfalar 24 saatte bir yenilenir; build'de generateStaticParams ile şehir sayfaları üretilir
-export const revalidate = 86400;
+// Her istekte sunucuda render (view-source'ta vakitler görünsün; build'de API bazen başarısız olabiliyor)
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-/** Tüm şehirler için statik path üretir (cities.json); Google indexlemesi için HTML build'de hazır olur */
+/** Geçerli path listesi (build'de statik üretim yok, sayfa her istekte SSR) */
 export function generateStaticParams(): Array<{ locale: string; il: string }> {
   const cities = getAllCities().filter((c) => c.slug !== 'adapazari');
   return locales.flatMap((locale) =>
