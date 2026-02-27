@@ -100,6 +100,11 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
   };
 }
 
+/**
+ * Şehir (il) sayfası — SERVER RENDERED (SEO).
+ * Namaz vakitleri yalnızca sunucuda çekilir; ilk HTML yanıtında düz metin olarak bulunur.
+ * Client-side fetch yok (useEffect ile veri çekilmez).
+ */
 export default async function CityPage({ params }: CityPageProps) {
   // /tr/adapazari => 301/308 kalıcı yönlendirme → /tr/sakarya/adapazari (redirect sadece burada, server-side).
   if (params.il === 'adapazari') {
@@ -113,6 +118,7 @@ export default async function CityPage({ params }: CityPageProps) {
 
   const t = await getTranslations({ locale: params.locale, namespace: 'site' });
   const tPrayer = await getTranslations({ locale: params.locale, namespace: 'prayer' });
+  const tPrayers = await getTranslations({ locale: params.locale, namespace: 'prayers' });
   const tStatus = await getTranslations({ locale: params.locale, namespace: 'status' });
   const tLocation = await getTranslations({ locale: params.locale, namespace: 'location' });
   const tFooter = await getTranslations({ locale: params.locale, namespace: 'footer' });
@@ -339,6 +345,19 @@ export default async function CityPage({ params }: CityPageProps) {
             <p className="text-center text-navy-700 dark:text-gold-300/80 text-xs sm:text-sm mb-4">
               ℹ️ Namaz vakitleri, hesaplama yöntemlerine bağlı olarak birkaç dakikalık farklılık gösterebilir.
             </p>
+
+            {/* SEO: Namaz vakitleri ilk HTML yanıtında düz metin (Google indekslemesi için) */}
+            <section aria-label={tPrayer('todaysPrayersWithCity', { city: city.name })} className="mb-5">
+              <h2 className="sr-only">{tPrayer('todaysPrayersWithCity', { city: city.name })}</h2>
+              <ul className="list-none text-center space-y-1 text-navy-900 dark:text-gold-300/90 font-medium">
+                <li>{tPrayers('imsak')}: {todayTimes.imsak}</li>
+                <li>{tPrayers('gunes')}: {todayTimes.gunes}</li>
+                <li>{tPrayers('ogle')}: {todayTimes.ogle}</li>
+                <li>{tPrayers('ikindi')}: {todayTimes.ikindi}</li>
+                <li>{tPrayers('aksam')}: {todayTimes.aksam}</li>
+                <li>{tPrayers('yatsi')}: {todayTimes.yatsi}</li>
+              </ul>
+            </section>
 
             {/* Location & Date Card */}
             <div className="bg-white dark:bg-gradient-to-br dark:from-navy-dark/90 dark:to-navy-darker/90 backdrop-blur-md rounded-xl shadow-lg dark:shadow-xl p-4 sm:p-5 border border-gold-500 dark:border-gold-500/30">
