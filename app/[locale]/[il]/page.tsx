@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getTodayPrayerTimes, getMonthlyPrayerTimes, tryFetchPrayerTimesFromDiyanet } from '@/lib/api';
-import { getCityBySlug } from '@/lib/cities-helper';
+import { getCityBySlug, getAllCities } from '@/lib/cities-helper';
 import { getNextPrayerTime, formatDate, formatHijriDate, isRamadan } from '@/lib/utils';
 import { getPrayerTimes } from '@/lib/services/prayerTimesService';
 import { hasCoordsExist } from '@/lib/geo/tr';
@@ -18,9 +18,18 @@ import IftarCard from '@/components/IftarCard';
 import CitySEOContent from '@/components/CitySEOContent';
 import CityInternalLinks from '@/components/CityInternalLinks';
 import { PrayerName, PrayerTime } from '@/lib/types';
+import { locales } from '@/i18n';
 
-// ISR: ilk istekte server'da üretilir, 1 saat cache — build'de SSG yok (429 riski yok)
-export const revalidate = 3600;
+// ISR: sayfalar 24 saatte bir yenilenir; build'de generateStaticParams ile şehir sayfaları üretilir
+export const revalidate = 86400;
+
+/** Tüm şehirler için statik path üretir (cities.json); Google indexlemesi için HTML build'de hazır olur */
+export function generateStaticParams(): Array<{ locale: string; il: string }> {
+  const cities = getAllCities().filter((c) => c.slug !== 'adapazari');
+  return locales.flatMap((locale) =>
+    cities.map((city) => ({ locale, il: city.slug }))
+  );
+}
 
 // Doğrulama: /tr/adapazari => 301/308 → /tr/sakarya/adapazari. /tr/sakarya/adapazari => 200, robots index,follow, canonical https://www.ezanvakti.site/tr/sakarya/adapazari. View Source'da noindex yok; X-Robots-Tag noindex yok.
 
