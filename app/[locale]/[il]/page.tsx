@@ -219,7 +219,6 @@ export default async function CityPage({ params }: CityPageProps) {
   }
 
   if (!todayTimes) {
-    console.error('[CityPage] VAKITLER YOK:', params.il);
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -234,7 +233,6 @@ export default async function CityPage({ params }: CityPageProps) {
     );
   }
 
-  console.log('[CityPage] VAKITLER:', JSON.stringify({ il: params.il, imsak: todayTimes.imsak, ogle: todayTimes.ogle, aksam: todayTimes.aksam }));
   const nextPrayer = getNextPrayerTime(todayTimes);
   const currentDate = new Date();
   
@@ -348,7 +346,6 @@ export default async function CityPage({ params }: CityPageProps) {
 
   return (
     <>
-      <p style={{ display: 'block' }}>TEST-{todayTimes?.imsak}</p>
       <JsonLd data={jsonLd} />
       <JsonLd data={pageJsonLd} />
       {faqSchema && <JsonLd data={faqSchema} />}
