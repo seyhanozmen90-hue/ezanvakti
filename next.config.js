@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  async rewrites() {
-    return [{ source: '/ads.txt', destination: '/api/ads-txt' }];
-  },
   images: {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 86400,
@@ -23,6 +20,13 @@ const nextConfig = {
         source: '/(.*)\\.(ico|png|jpg|jpeg|webp|avif|svg|woff|woff2)',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/ads.txt',
+        headers: [
+          { key: 'Content-Type', value: 'text/plain; charset=utf-8' },
+          { key: 'Cache-Control', value: 'public, max-age=3600' },
         ],
       },
     ];
