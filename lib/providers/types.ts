@@ -4,9 +4,11 @@ export interface Coordinates {
 }
 
 export interface FetchTimingsParams {
-  coords: Coordinates;
+  coords?: Coordinates;
   date: string; // YYYY-MM-DD
   timezone?: string;
+  /** Diyanet API için ilçe ID (varsa coords kullanılmaz) */
+  diyanetDistrictId?: string;
 }
 
 export interface ProviderTimings {

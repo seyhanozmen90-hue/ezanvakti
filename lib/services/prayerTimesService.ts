@@ -1,7 +1,8 @@
 import { getPrayerTimesFromDb, getLastKnownPrayerTimes, upsertPrayerTimes } from '../db/prayerTimesDb';
 import { PrayerTimeRecord } from '../db/types';
-import { getActiveProvider } from '../providers';
+import { getActiveProvider, aladhanProvider, diyanetProvider } from '../providers';
 import { getCoords } from '../geo/tr';
+import { getDiyanetDistrictId } from '../cities-helper';
 import { lockManager } from './lockManager';
 
 /**
@@ -107,20 +108,24 @@ export async function getPrayerTimes(
   }
 
   // Step 3: We have the lock, fetch from provider
+  // Öncelik: Diyanet (resmi vakitler) — şehir/ilçe ID varsa; yoksa Aladhan (koordinat)
   try {
-    const provider = getActiveProvider();
-    
-    // Get coordinates
-    const coords = getCoords(city_slug, district_slug);
+    const diyanetId = getDiyanetDistrictId(city_slug, district_slug ?? undefined);
+    const provider = diyanetId ? diyanetProvider : getActiveProvider();
+    const isDiyanet = !!diyanetId;
 
-    // Fetch from provider
-    const providerResult = await provider.fetchTimings({
-      coords,
-      date,
-      timezone: 'Europe/Istanbul',
-    });
+    const providerResult = isDiyanet
+      ? await provider.fetchTimings({
+          date,
+          timezone: 'Europe/Istanbul',
+          diyanetDistrictId: diyanetId!,
+        })
+      : await provider.fetchTimings({
+          coords: getCoords(city_slug, district_slug),
+          date,
+          timezone: 'Europe/Istanbul',
+        });
 
-    // Upsert to DB
     const record = await upsertPrayerTimes({
       city_slug,
       district_slug: district_slug || null,
@@ -132,7 +137,7 @@ export async function getPrayerTimes(
       maghrib: providerResult.timings.maghrib,
       isha: providerResult.timings.isha,
       timezone: providerResult.timezone,
-      source: provider.name as 'aladhan' | 'diyanet',
+      source: isDiyanet ? 'diyanet' : (provider.name as 'aladhan' | 'diyanet'),
     });
 
     return recordToResult(record, false);
@@ -221,14 +226,21 @@ export async function refreshPrayerTimes(
   const { city_slug, district_slug, date } = params;
 
   try {
-    const provider = getActiveProvider();
-    const coords = getCoords(city_slug, district_slug);
+    const diyanetId = getDiyanetDistrictId(city_slug, district_slug ?? undefined);
+    const provider = diyanetId ? diyanetProvider : getActiveProvider();
+    const isDiyanet = !!diyanetId;
 
-    const providerResult = await provider.fetchTimings({
-      coords,
-      date,
-      timezone: 'Europe/Istanbul',
-    });
+    const providerResult = isDiyanet
+      ? await provider.fetchTimings({
+          date,
+          timezone: 'Europe/Istanbul',
+          diyanetDistrictId: diyanetId!,
+        })
+      : await provider.fetchTimings({
+          coords: getCoords(city_slug, district_slug),
+          date,
+          timezone: 'Europe/Istanbul',
+        });
 
     const record = await upsertPrayerTimes({
       city_slug,
@@ -241,7 +253,7 @@ export async function refreshPrayerTimes(
       maghrib: providerResult.timings.maghrib,
       isha: providerResult.timings.isha,
       timezone: providerResult.timezone,
-      source: provider.name as 'aladhan' | 'diyanet',
+      source: isDiyanet ? 'diyanet' : (provider.name as 'aladhan' | 'diyanet'),
     });
 
     return recordToResult(record, false);

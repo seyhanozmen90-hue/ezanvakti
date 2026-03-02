@@ -39,6 +39,27 @@ export function getDistrictBySlug(
 }
 
 /**
+ * Diyanet API için ilçe ID'si döndürür.
+ * Şehir merkezi için il ID'si (Merkez), ilçe seçiliyse ilçe ID'si kullanılır.
+ * Şehir/ilçe cities.json'da yoksa null döner.
+ */
+export function getDiyanetDistrictId(
+  citySlug: string,
+  districtSlug?: string
+): string | null {
+  const city = getCityBySlug(citySlug);
+  if (!city) return null;
+
+  if (districtSlug) {
+    const district = city.districts.find(d => d.slug === districtSlug);
+    return district ? district.id : null;
+  }
+
+  // İl merkezi: Diyanet'te districtID = il ID (Merkez) kullanılır
+  return city.id;
+}
+
+/**
  * Tüm şehir ve ilçe kombinasyonlarını getirir (sitemap için)
  */
 export function getAllCityDistrictCombinations(): Array<{

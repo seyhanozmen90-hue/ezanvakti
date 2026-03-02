@@ -38,6 +38,10 @@ export class AladhanProvider implements PrayerTimesProvider {
   async fetchTimings(params: FetchTimingsParams): Promise<ProviderResponse> {
     const { coords, date, timezone = 'Europe/Istanbul' } = params;
 
+    if (!coords) {
+      throw new Error('Aladhan provider requires coords');
+    }
+
     try {
       // Convert YYYY-MM-DD to timestamp for Aladhan
       const timestamp = Math.floor(new Date(`${date}T12:00:00`).getTime() / 1000);
