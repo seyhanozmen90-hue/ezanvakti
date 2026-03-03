@@ -24,6 +24,7 @@ const intlMiddleware = createMiddleware({
 
 export default function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  if (pathname === '/ads.txt') return NextResponse.next();
   const adapazariRedirect = redirectAdapazari(pathname, request);
   if (adapazariRedirect) return adapazariRedirect;
   return intlMiddleware(request);
