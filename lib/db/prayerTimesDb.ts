@@ -1,12 +1,14 @@
-import { getSupabaseServerClient } from '../supabase/server';
+import { getSupabaseServerClient, isSupabaseConfigured } from '../supabase/server';
 import { PrayerTimeRecord, PrayerTimeInsert, PrayerTimeQuery } from './types';
 
 /**
- * Get prayer times from database
+ * Get prayer times from database.
+ * Supabase yapılandırılmamışsa veya hata olursa null döner (uygulama provider ile devam eder).
  */
 export async function getPrayerTimesFromDb(
   params: PrayerTimeQuery
 ): Promise<PrayerTimeRecord | null> {
+  if (!isSupabaseConfigured()) return null;
   try {
     const supabase = getSupabaseServerClient();
 
@@ -33,22 +35,23 @@ export async function getPrayerTimesFromDb(
 
     return data;
   } catch (error) {
-    console.error('Error fetching prayer times from DB:', error);
-    throw error;
+    console.warn('Supabase: prayer times read failed (using provider fallback):', error instanceof Error ? error.message : error);
+    return null;
   }
 }
 
 /**
- * Get last known prayer times for fallback
+ * Get last known prayer times for fallback.
+ * Supabase yoksa veya hata olursa null döner.
  */
 export async function getLastKnownPrayerTimes(
   city_slug: string,
   district_slug?: string
 ): Promise<PrayerTimeRecord | null> {
+  if (!isSupabaseConfigured()) return null;
   try {
     const supabase = getSupabaseServerClient();
 
-    // Build query with all filters BEFORE calling maybeSingle
     let query = supabase
       .from('prayer_times')
       .select('*')
@@ -57,14 +60,12 @@ export async function getLastKnownPrayerTimes(
       .order('fetched_at', { ascending: false })
       .limit(1);
 
-    // Handle district_slug
     if (district_slug) {
       query = query.eq('district_slug', district_slug);
     } else {
       query = query.is('district_slug', null);
     }
 
-    // Call maybeSingle at the end
     const { data, error } = await query.maybeSingle();
 
     if (error) {
@@ -73,17 +74,21 @@ export async function getLastKnownPrayerTimes(
 
     return data;
   } catch (error) {
-    console.error('Error fetching last known prayer times:', error);
+    console.warn('Supabase: last known prayer times failed:', error instanceof Error ? error.message : error);
     return null;
   }
 }
 
 /**
- * Upsert prayer times into database
+ * Upsert prayer times into database.
+ * Supabase yoksa veya hata olursa exception fırlatır; service bu durumda provider sonucunu döndürebilir.
  */
 export async function upsertPrayerTimes(
   data: PrayerTimeInsert
 ): Promise<PrayerTimeRecord> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
   try {
     const supabase = getSupabaseServerClient();
 
@@ -121,7 +126,7 @@ export async function upsertPrayerTimes(
 
     return result as PrayerTimeRecord;
   } catch (error) {
-    console.error('Error upserting prayer times:', error);
+    console.warn('Supabase: upsert prayer times failed (response still returned from provider):', error instanceof Error ? error.message : error);
     throw error;
   }
 }
@@ -132,6 +137,7 @@ export async function upsertPrayerTimes(
 export async function getCitiesNeedingRefresh(
   targetDate: string
 ): Promise<Array<{ city_slug: string; district_slug: string | null }>> {
+  if (!isSupabaseConfigured()) return [];
   try {
     const supabase = getSupabaseServerClient();
 

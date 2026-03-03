@@ -1,7 +1,7 @@
 import { getPrayerTimesFromDb, getLastKnownPrayerTimes, upsertPrayerTimes } from '../db/prayerTimesDb';
 import { PrayerTimeRecord } from '../db/types';
 import { getActiveProvider, aladhanProvider, diyanetProvider } from '../providers';
-import { getCoords } from '../geo/tr';
+import { getCoords, hasCoordsExist } from '../geo/tr';
 import { getDiyanetDistrictId } from '../cities-helper';
 import { lockManager } from './lockManager';
 
@@ -107,44 +107,70 @@ export async function getPrayerTimes(
     return await getFallback(city_slug, district_slug, date);
   }
 
-  // Step 3: We have the lock, fetch from provider
-  // Öncelik: Diyanet (resmi vakitler) — şehir/ilçe ID varsa; yoksa Aladhan (koordinat)
+  // Step 3: Fetch from provider — Diyanet önce, başarısızsa Aladhan (koordinat varsa), son çare fallback
   try {
     const diyanetId = getDiyanetDistrictId(city_slug, district_slug ?? undefined);
-    const provider = diyanetId ? diyanetProvider : getActiveProvider();
-    const isDiyanet = !!diyanetId;
+    const hasCoords = hasCoordsExist(city_slug, district_slug);
+    let providerResult: Awaited<ReturnType<typeof diyanetProvider.fetchTimings>> | null = null;
+    let source: 'aladhan' | 'diyanet' = 'aladhan';
 
-    const providerResult = isDiyanet
-      ? await provider.fetchTimings({
-          date,
-          timezone: 'Europe/Istanbul',
-          diyanetDistrictId: diyanetId!,
-        })
-      : await provider.fetchTimings({
+    if (diyanetId) {
+      const diyanetParams = { date, timezone: 'Europe/Istanbul' as const, diyanetDistrictId: diyanetId };
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          providerResult = await diyanetProvider.fetchTimings(diyanetParams);
+          source = 'diyanet';
+          break;
+        } catch (diyanetError) {
+          if (attempt < 3) {
+            await new Promise((r) => setTimeout(r, 1500 * attempt));
+          } else {
+            console.warn('Diyanet failed after 3 attempts, trying Aladhan:', diyanetError instanceof Error ? diyanetError.message : diyanetError);
+          }
+        }
+      }
+    }
+
+    if (!providerResult && hasCoords) {
+      try {
+        providerResult = await aladhanProvider.fetchTimings({
           coords: getCoords(city_slug, district_slug),
           date,
           timezone: 'Europe/Istanbul',
         });
+        source = 'aladhan';
+      } catch (aladhanError) {
+        console.warn('Aladhan failed:', aladhanError instanceof Error ? aladhanError.message : aladhanError);
+      }
+    }
 
-    const record = await upsertPrayerTimes({
-      city_slug,
-      district_slug: district_slug || null,
-      date,
-      fajr: providerResult.timings.fajr,
-      sunrise: providerResult.timings.sunrise,
-      dhuhr: providerResult.timings.dhuhr,
-      asr: providerResult.timings.asr,
-      maghrib: providerResult.timings.maghrib,
-      isha: providerResult.timings.isha,
-      timezone: providerResult.timezone,
-      source: isDiyanet ? 'diyanet' : (provider.name as 'aladhan' | 'diyanet'),
-    });
+    if (providerResult) {
+      const insertPayload = {
+        city_slug,
+        district_slug: district_slug || null,
+        date,
+        fajr: providerResult.timings.fajr,
+        sunrise: providerResult.timings.sunrise,
+        dhuhr: providerResult.timings.dhuhr,
+        asr: providerResult.timings.asr,
+        maghrib: providerResult.timings.maghrib,
+        isha: providerResult.timings.isha,
+        timezone: providerResult.timezone,
+        source,
+      };
 
-    return recordToResult(record, false);
+      let record: PrayerTimeRecord;
+      try {
+        record = await upsertPrayerTimes(insertPayload);
+      } catch (dbError) {
+        record = { ...insertPayload, fetched_at: new Date().toISOString() } as PrayerTimeRecord;
+      }
+      return recordToResult(record, false);
+    }
+
+    return await getFallback(city_slug, district_slug, date);
   } catch (error) {
     console.error('Provider fetch failed, using fallback', error);
-    
-    // Step 4: Provider failed, try fallback
     return await getFallback(city_slug, district_slug, date);
   } finally {
     // Always release lock
@@ -153,40 +179,33 @@ export async function getPrayerTimes(
 }
 
 /**
- * Get fallback data from DB (last known prayer times)
- * 
- * IMPORTANT: If district_slug is provided, ONLY returns district-level data.
- * Never falls back to city-level data when district is specified.
+ * Get fallback data from DB (last known prayer times).
+ * Sadece istenen tarih ile cache tarihi aynıysa döner; farklı tarih dönmemek için.
  */
 async function getFallback(
   city_slug: string,
   district_slug: string | undefined,
   date: string
 ): Promise<PrayerTimesResult> {
-  // Query with exact city_slug + district_slug combination
-  // This ensures district queries don't fall back to city data
   const lastKnown = await getLastKnownPrayerTimes(city_slug, district_slug);
 
   if (!lastKnown) {
-    const locationStr = district_slug 
-      ? `${city_slug}/${district_slug}` 
-      : city_slug;
-    
+    const locationStr = district_slug ? `${city_slug}/${district_slug}` : city_slug;
     throw new Error(
       `No prayer times available for ${locationStr} on ${date}. ` +
       `Provider is down and no cached data exists for this specific location.`
     );
   }
 
-  const locationStr = district_slug 
-    ? `${city_slug}/${district_slug}` 
-    : city_slug;
+  if (lastKnown.date !== date) {
+    const locationStr = district_slug ? `${city_slug}/${district_slug}` : city_slug;
+    throw new Error(
+      `No prayer times for ${locationStr} on ${date}. ` +
+      `Cached data is for ${lastKnown.date}; providers unavailable.`
+    );
+  }
 
-  console.warn(
-    `Using stale data for ${locationStr} ` +
-    `(requested: ${date}, using: ${lastKnown.date})`
-  );
-
+  console.warn(`Using stale cache for ${city_slug} (${date})`);
   return recordToResult(lastKnown, true);
 }
 

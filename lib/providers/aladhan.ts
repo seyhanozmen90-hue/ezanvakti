@@ -43,8 +43,8 @@ export class AladhanProvider implements PrayerTimesProvider {
     }
 
     try {
-      // Convert YYYY-MM-DD to timestamp for Aladhan
-      const timestamp = Math.floor(new Date(`${date}T12:00:00`).getTime() / 1000);
+      // Tarih Türkiye gününe göre (Europe/Istanbul); sunucu timezone'dan bağımsız
+      const timestamp = Math.floor(new Date(`${date}T12:00:00+03:00`).getTime() / 1000);
 
       // Build URL with params
       // method=13 (Turkey Diyanet), school=0 (Shafi: Diyanet ikindi = gölge 1x, Hanafi=1 ise ~1 saat sonra)
