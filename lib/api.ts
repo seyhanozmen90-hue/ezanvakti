@@ -1,6 +1,15 @@
 import { PrayerTime } from './types';
 import { getMockPrayerTimes, getMockTodayPrayerTimes } from './mock-data';
-import { turkishizeHijriDate } from './utils';
+import { turkishizeHijriDate, getTodayInIstanbul } from './utils';
+
+/** DD.MM.YYYY veya YYYY-MM-DD → YYYY-MM-DD (Diyanet tarih eşlemesi) */
+function toISOKey(d: string): string {
+  if (d.includes('-') && d.length === 10) return d;
+  const parts = d.trim().split('.');
+  if (parts.length !== 3) return d;
+  const [day, month, year] = parts;
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
 
 const API_BASE_URL = 'https://api.diyanet.gov.tr/api/PrayerTime';
 /** Mock sadece son fallback için; önce Diyanet, sonra Aladhan denenecek */
@@ -120,13 +129,9 @@ export async function getTodayPrayerTimes(
 
   try {
     const times = await fetchPrayerTimes(cityId, districtId);
-    const today = new Date().toLocaleDateString('tr-TR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    const todayKey = getTodayInIstanbul();
 
-    return times.find(t => t.date === today) || times[0] || null;
+    return times.find(t => toISOKey(t.date) === todayKey) || times[0] || null;
   } catch (error) {
     console.error('Error getting today prayer times, using mock data:', error);
     return getMockTodayPrayerTimes();

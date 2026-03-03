@@ -4,7 +4,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getTodayPrayerTimes, getMonthlyPrayerTimes, tryFetchPrayerTimesFromDiyanet } from '@/lib/api';
 import { getDistrictBySlug, getAllCityDistrictCombinations, getCityBySlug } from '@/lib/cities-helper';
-import { getNextPrayerTime, formatDate, formatHijriDate, isRamadan } from '@/lib/utils';
+import { getNextPrayerTime, formatDate, formatHijriDate, isRamadan, getTodayInIstanbul, getCurrentMonthInIstanbul } from '@/lib/utils';
 import { getPrayerTimes } from '@/lib/services/prayerTimesService';
 import { hasCoordsExist } from '@/lib/geo/tr';
 import CountdownTimer from '@/components/CountdownTimer';
@@ -25,6 +25,15 @@ export const dynamic = 'force-dynamic';
 function formatDateForDisplay(isoDate: string): string {
   const [year, month, day] = isoDate.split('-');
   return `${day}.${month}.${year}`;
+}
+
+/** DD.MM.YYYY veya YYYY-MM-DD → YYYY-MM-DD (Diyanet tarih eşlemesi) */
+function toISOKey(d: string): string {
+  if (d.includes('-') && d.length === 10) return d;
+  const parts = d.trim().split('.');
+  if (parts.length !== 3) return d;
+  const [day, month, year] = parts;
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
 interface DistrictPageProps {
@@ -125,13 +134,9 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
   const tFooter = await getTranslations({ locale: params.locale, namespace: 'footer' });
 
   const hasCoordinates = hasCoordsExist(city.slug, district.slug);
-  const today = new Date();
-  const todayStr = today.toLocaleDateString('tr-TR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-  const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const date = getTodayInIstanbul();
+  const { year: currentYearNum, month: currentMonthNum } = getCurrentMonthInIstanbul();
+  const currentMonth = `${currentYearNum}-${String(currentMonthNum).padStart(2, '0')}`;
 
   let todayTimes: PrayerTime | null = null;
   let monthlyTimes: PrayerTime[] = [];
@@ -141,7 +146,8 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
   // 1) Primary: Diyanet API (ilçe ID ile)
   const diyanetMonthly = await tryFetchPrayerTimesFromDiyanet(city.id, district.id);
   if (diyanetMonthly && diyanetMonthly.length > 0) {
-    const found = diyanetMonthly.find((t) => t.date === todayStr) || diyanetMonthly[0];
+    const todayKey = date;
+    const found = diyanetMonthly.find((t) => toISOKey(t.date) === todayKey) || diyanetMonthly[0];
     todayTimes = {
       ...found,
       date: formatDateForDisplay(date),
@@ -175,7 +181,6 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
       };
       isDbBacked = true;
       try {
-        const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
         const [year, monthNum] = currentMonth.split('-').map(Number);
         const daysInMonth = new Date(year, monthNum, 0).getDate();
         const monthlyResults = [];
@@ -231,7 +236,7 @@ export default async function DistrictPage({ params }: DistrictPageProps) {
   }
 
   const nextPrayer = getNextPrayerTime(todayTimes);
-  const currentDate = new Date();
+  const currentDate = new Date(`${date}T12:00:00+03:00`);
   
   // Ramazan ayı kontrolü
   const isRamadanMonth = isRamadan(todayTimes.hijriDate);

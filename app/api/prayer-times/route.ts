@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPrayerTimes } from '@/lib/services/prayerTimesService';
 import { getTodayPrayerTimes } from '@/lib/api';
 import { getCityBySlug, getDistrictBySlug } from '@/lib/cities-helper';
+import { getTodayInIstanbul } from '@/lib/utils';
 
 // Force dynamic rendering (no static generation)
 export const dynamic = 'force-dynamic';
@@ -191,20 +192,3 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * Get today's date in Europe/Istanbul timezone
- * Returns YYYY-MM-DD format
- * 
- * Uses Intl.DateTimeFormat for reliable timezone conversion
- */
-function getTodayInIstanbul(): string {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Istanbul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-
-  // en-CA locale gives YYYY-MM-DD format directly
-  return formatter.format(new Date());
-}

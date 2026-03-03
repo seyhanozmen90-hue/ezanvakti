@@ -28,6 +28,30 @@ export function getPrayerDisplayName(name: PrayerName): string {
   return names[name];
 }
 
+/**
+ * Bugünün tarihini Europe/Istanbul saatine göre döndürür (sunucu timezone'dan bağımsız).
+ * @returns YYYY-MM-DD formatında tarih
+ */
+export function getTodayInIstanbul(): string {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  return formatter.format(new Date());
+}
+
+/**
+ * Bugünün tarihini Europe/Istanbul'a göre ay/yıl (aylık veri için).
+ * @returns { year, month } month 1-12
+ */
+export function getCurrentMonthInIstanbul(): { year: number; month: number } {
+  const today = getTodayInIstanbul();
+  const [y, m] = today.split('-').map(Number);
+  return { year: y, month: m };
+}
+
 /** Namaz vakitleri Türkiye saatine göre; şu anki saati Europe/Istanbul'a göre al */
 function getNowInTurkey(): { hours: number; minutes: number; minutesOfDay: number } {
   const now = new Date();

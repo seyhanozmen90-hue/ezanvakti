@@ -4,7 +4,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getTodayPrayerTimes, getMonthlyPrayerTimes, tryFetchPrayerTimesFromDiyanet } from '@/lib/api';
 import { getCityBySlug, getAllCities } from '@/lib/cities-helper';
-import { getNextPrayerTime, formatDate, formatHijriDate, isRamadan } from '@/lib/utils';
+import { getNextPrayerTime, formatDate, formatHijriDate, isRamadan, getTodayInIstanbul, getCurrentMonthInIstanbul } from '@/lib/utils';
 import { getPrayerTimes } from '@/lib/services/prayerTimesService';
 import { hasCoordsExist } from '@/lib/geo/tr';
 import { SEHIR_ADLARI } from '@/lib/sehir-adlari';
@@ -139,14 +139,9 @@ export default async function CityPage({ params }: CityPageProps) {
   const tFooter = await getTranslations({ locale: params.locale, namespace: 'footer' });
 
   const hasCoordinates = hasCoordsExist(city.slug);
-  const todayStr = new Date().toLocaleDateString('tr-TR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-  const today = new Date();
-  const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const date = getTodayInIstanbul();
+  const { year: currentYearNum, month: currentMonthNum } = getCurrentMonthInIstanbul();
+  const currentMonth = `${currentYearNum}-${String(currentMonthNum).padStart(2, '0')}`;
 
   let todayTimes: PrayerTime | null = null;
   let monthlyTimes: PrayerTime[] = [];
@@ -160,7 +155,6 @@ export default async function CityPage({ params }: CityPageProps) {
     const todayKey = toISOKey(date);
     const found =
       diyanetMonthly.find((t) => toISOKey(t.date) === todayKey) ||
-      diyanetMonthly.find((t) => t.date === todayStr) ||
       diyanetMonthly[0];
     todayTimes = {
       ...found,
@@ -234,7 +228,7 @@ export default async function CityPage({ params }: CityPageProps) {
   }
 
   const nextPrayer = getNextPrayerTime(todayTimes);
-  const currentDate = new Date();
+  const currentDate = new Date(`${date}T12:00:00+03:00`);
   
   // Ramazan ayı kontrolü
   const isRamadanMonth = isRamadan(todayTimes.hijriDate);

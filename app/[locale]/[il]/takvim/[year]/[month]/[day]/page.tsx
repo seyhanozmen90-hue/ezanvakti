@@ -6,6 +6,7 @@ import { getCityBySlug } from '@/lib/cities-helper';
 import { hasCoordsExist } from '@/lib/geo/tr';
 import { getPrayerTimes } from '@/lib/services/prayerTimesService';
 import { getDayDuration, getNightDuration, getDayChangeMinutes } from '@/lib/calendar';
+import { getTodayInIstanbul } from '@/lib/utils';
 
 interface PageProps {
   params: { locale: string; il: string; year: string; month: string; day: string };
@@ -23,8 +24,7 @@ export default async function DayPage({ params }: PageProps) {
   const yesterday = new Date(date);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayString = yesterday.toISOString().split('T')[0];
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const todayStr = getTodayInIstanbul();
   const dayData = getCalendarDay(dateString);
 
   let times: { imsak: string; gunes: string; ogle: string; ikindi: string; aksam: string; yatsi: string } | undefined;
