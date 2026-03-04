@@ -52,8 +52,8 @@ export function getCurrentMonthInIstanbul(): { year: number; month: number } {
   return { year: y, month: m };
 }
 
-/** Namaz vakitleri Türkiye saatine göre; şu anki saati Europe/Istanbul'a göre al */
-function getNowInTurkey(): { hours: number; minutes: number; minutesOfDay: number } {
+/** Namaz vakitleri Türkiye saatine göre; şu anki saati Europe/Istanbul'a göre al (client + server) */
+export function getNowInTurkey(): { hours: number; minutes: number; minutesOfDay: number } {
   const now = new Date();
   const formatter = new Intl.DateTimeFormat('tr-TR', {
     timeZone: 'Europe/Istanbul',
@@ -107,47 +107,35 @@ export function getNextPrayerTime(times: PrayerTime): NextPrayer | null {
 }
 
 /**
- * Kalan süreyi hesaplar
- * Timezone-aware hesaplama ile gece yarısı geçişlerinde hatasız çalışır
+ * Kalan süreyi hesaplar — Europe/Istanbul (Türkiye) saatine göre.
+ * Hedef vakit bugün Türkiye’de geçtiyse yarın aynı saate sayar (örn. gece yarısı sonrası İmsak).
  */
 export function calculateTimeRemaining(targetTime: string): TimeRemaining {
-  const now = new Date();
-  const [hours, minutes] = targetTime.split(':').map(Number);
-  
-  // Hedef zamanı bugünün tarihi ile birleştir
-  const target = new Date();
-  target.setHours(hours, minutes, 0, 0);
+  const now = Date.now();
+  const [hours, minutes] = targetTime.trim().split(':').map(Number);
+  const today = getTodayInIstanbul();
 
-  // Eğer hedef saat geçmişse veya tam şu an ise, yarına ayarla
-  if (target <= now) {
-    target.setDate(target.getDate() + 1);
+  // Hedef: bugün Türkiye’de (HH:mm) anı
+  let target = new Date(`${today}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+03:00`);
+
+  if (target.getTime() <= now) {
+    const nextDay = new Date(`${today}T12:00:00+03:00`);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const tomorrowStr = nextDay.toISOString().slice(0, 10);
+    target = new Date(`${tomorrowStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+03:00`);
   }
 
-  // Milisaniye farkını hesapla
-  const diff = target.getTime() - now.getTime();
-  
-  // Negatif değer kontrolü (güvenlik için)
+  const diff = target.getTime() - now;
   if (diff < 0) {
-    return {
-      hours: 0,
-      minutes: 0,
-      seconds: 0,
-      totalSeconds: 0,
-    };
+    return { hours: 0, minutes: 0, seconds: 0, totalSeconds: 0 };
   }
 
   const totalSeconds = Math.floor(diff / 1000);
-  
   const hrs = Math.floor(totalSeconds / 3600);
   const mins = Math.floor((totalSeconds % 3600) / 60);
   const secs = totalSeconds % 60;
 
-  return {
-    hours: hrs,
-    minutes: mins,
-    seconds: secs,
-    totalSeconds,
-  };
+  return { hours: hrs, minutes: mins, seconds: secs, totalSeconds };
 }
 
 /**
@@ -212,16 +200,13 @@ export function formatHijriDate(hijriDate?: string): string {
 }
 
 /**
- * Namaz vaktinin geçip geçmediğini kontrol eder
+ * Namaz vaktinin geçip geçmediğini kontrol eder (Europe/Istanbul saati)
  */
 export function isPrayerTimePassed(prayerTime: string): boolean {
-  const now = new Date();
-  const currentTime = now.getHours() * 60 + now.getMinutes();
-  
-  const [hours, minutes] = prayerTime.split(':').map(Number);
-  const targetTime = hours * 60 + minutes;
-  
-  return targetTime < currentTime;
+  const { minutesOfDay: nowMinutes } = getNowInTurkey();
+  const [h, m] = prayerTime.trim().split(':').map(Number);
+  const prayerMinutes = (h ?? 0) * 60 + (m ?? 0);
+  return prayerMinutes < nowMinutes;
 }
 
 /**

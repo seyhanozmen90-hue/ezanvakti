@@ -2,22 +2,23 @@
 
 import { useTranslations } from 'next-intl';
 import { PrayerName } from '@/lib/types';
-import { getPrayerDisplayName, isPrayerTimePassed } from '@/lib/utils';
+import { isPrayerTimePassed } from '@/lib/utils';
 
 interface PrayerTimeCardProps {
   prayerName: PrayerName;
   time: string;
   isNext?: boolean;
+  /** Verilirse Türkiye saatine göre hesaplanmış değer kullanılır (client component’ten) */
+  isPassed?: boolean;
   locale: string;
 }
 
-export default function PrayerTimeCard({ prayerName, time, isNext, locale }: PrayerTimeCardProps) {
+export default function PrayerTimeCard({ prayerName, time, isNext, isPassed: isPassedProp, locale }: PrayerTimeCardProps) {
   const t = useTranslations('prayers');
   const tTime = useTranslations('time');
   
-  // Vakit ismini i18n'den al
   const displayName = t(prayerName);
-  const isPassed = isPrayerTimePassed(time);
+  const isPassed = isPassedProp !== undefined ? isPassedProp : isPrayerTimePassed(time);
   
   // İmsak için özel şeffaf stil
   const isImsak = prayerName === 'imsak';

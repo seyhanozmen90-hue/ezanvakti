@@ -4,12 +4,11 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getTodayPrayerTimes, getMonthlyPrayerTimes, tryFetchPrayerTimesFromDiyanet } from '@/lib/api';
 import { getCityBySlug, getAllCities } from '@/lib/cities-helper';
-import { getNextPrayerTime, formatDate, formatHijriDate, isRamadan, getTodayInIstanbul, getCurrentMonthInIstanbul } from '@/lib/utils';
+import { formatDate, formatHijriDate, isRamadan, getTodayInIstanbul, getCurrentMonthInIstanbul } from '@/lib/utils';
 import { getPrayerTimes } from '@/lib/services/prayerTimesService';
 import { hasCoordsExist } from '@/lib/geo/tr';
 import { SEHIR_ADLARI } from '@/lib/sehir-adlari';
-import CountdownTimer from '@/components/CountdownTimer';
-import PrayerTimeCard from '@/components/PrayerTimeCard';
+import NextPrayerAndCards from '@/components/NextPrayerAndCards';
 import MonthlyTable from '@/components/MonthlyTable';
 import ThemeToggle from '@/components/ThemeToggle';
 import CitySelector from '@/components/CitySelector';
@@ -17,7 +16,7 @@ import JsonLd from '@/components/JsonLd';
 import IftarCard from '@/components/IftarCard';
 import CitySEOContent from '@/components/CitySEOContent';
 import CityInternalLinks from '@/components/CityInternalLinks';
-import { PrayerName, PrayerTime } from '@/lib/types';
+import { PrayerTime } from '@/lib/types';
 import { locales } from '@/i18n';
 
 // Her istekte sunucuda render (view-source'ta vakitler görünsün; build'de API bazen başarısız olabiliyor)
@@ -227,7 +226,6 @@ export default async function CityPage({ params }: CityPageProps) {
     );
   }
 
-  const nextPrayer = getNextPrayerTime(todayTimes);
   const currentDate = new Date(`${date}T12:00:00+03:00`);
   
   // Ramazan ayı kontrolü
@@ -420,50 +418,15 @@ export default async function CityPage({ params }: CityPageProps) {
             />
           )}
 
-          {/* Next Prayer Countdown - BIG CARD */}
-          {nextPrayer && (
-            <div className="mb-5 bg-white dark:bg-gradient-to-br dark:from-navy-dark/90 dark:to-navy-darker/90 backdrop-blur-md rounded-xl shadow-lg dark:shadow-xl p-4 sm:p-5 text-navy-900 dark:text-gold-300 border border-gold-500 dark:border-gold-500/30">
-              <div className="text-center mb-2.5">
-                <h2 className="text-xs sm:text-sm font-bold mb-1 flex items-center justify-center gap-1.5 text-navy-900 dark:text-gold-300">
-                  <span className="text-base sm:text-lg">🕌</span>
-                  <span>{tPrayer('nextPrayerWithCity', { city: city.name })}</span>
-                </h2>
-                <div className="text-lg sm:text-xl font-bold mb-1 drop-shadow-lg text-navy-900 dark:text-gold-400">
-                  {nextPrayer.displayName}
-                </div>
-                <div className="text-base sm:text-lg font-mono font-bold bg-navy-100 dark:bg-navy-darkest/40 py-1 px-2.5 rounded-lg inline-block border border-gold-500 dark:border-gold-500/20 text-navy-900 dark:text-gold-400">
-                  {nextPrayer.time}
-                </div>
-              </div>
-              <CountdownTimer
-                targetTime={nextPrayer.time}
-                prayerName={nextPrayer.displayName}
-                locale={params.locale}
-                cityName={city.name}
-                aksamTime={todayTimes.aksam}
-                prayerKey={nextPrayer.name}
-              />
-            </div>
-          )}
-
-          {/* Today's Prayer Times */}
-          <div className="mb-8 sm:mb-6">
-            <h2 className="text-base sm:text-lg font-bold text-navy-900 dark:bg-gradient-to-r dark:from-gold-400 dark:to-gold-600 dark:bg-clip-text dark:text-transparent mb-4 sm:mb-3 flex items-center gap-2">
-              <span className="text-xl sm:text-2xl">📅</span>
-              <span className="text-navy-900 dark:text-transparent">{tPrayer('todaysPrayersWithCity', { city: city.name })}</span>
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-4">
-              {(['imsak', 'gunes', 'ogle', 'ikindi', 'aksam', 'yatsi'] as PrayerName[]).map((prayerName) => (
-                <PrayerTimeCard
-                  key={prayerName}
-                  prayerName={prayerName}
-                  time={todayTimes[prayerName]}
-                  isNext={nextPrayer?.name === prayerName}
-                  locale={params.locale}
-                />
-              ))}
-            </div>
-          </div>
+          {/* Bir sonraki vakit + geri sayım + bugünün vakitleri (client’te Türkiye saatine göre güncellenir) */}
+          <NextPrayerAndCards
+            todayTimes={todayTimes}
+            cityLabel={city.name}
+            locale={params.locale}
+            cityName={city.name}
+            aksamTime={todayTimes.aksam}
+            withIftarNotification={true}
+          />
 
           {/* Monthly Table - mobilde üstten daha fazla boşluk */}
           {monthlyTimes.length > 0 && (
