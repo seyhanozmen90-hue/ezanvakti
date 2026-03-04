@@ -39,9 +39,9 @@ function kiblaHesapla(lat: number, lng: number): number {
 
 /**
  * Coğrafi kerteriz (kiblaHam) sonrası pusula gösterimi için düzeltme.
- * Manyetik sapma (~6°) + cihaz/kadran uyumu: pusula ~140–150° sağa kayıyorsa bu açı kadar sola alınır.
+ * Manyetik sapma + cihaz/kadran uyumu: sağa kaymayı sola almak için çıkarılır.
  */
-const KIBLE_PUSULA_DUZELTME = 6 + 145; // 6° manyetik sapma + 145° sağa kayma düzeltmesi
+const KIBLE_PUSULA_DUZELTME = 231; // ~6° manyetik sapma + kadran uyumu (80° sağa kayma düzeltmesi eklendi)
 
 /** Haversine → Kabe'ye km */
 function mesafeHesapla(lat: number, lng: number): number {
